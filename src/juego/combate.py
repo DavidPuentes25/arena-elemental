@@ -1,15 +1,15 @@
 # Coordina el combate entre jugador y enemigo
 class Combate:
 
-    # Recibe los dos participantes del combate
+    # Recibe los participantes del combate
     def __init__(self, jugador, enemigo):
         self._jugador = jugador
         self._enemigo = enemigo
 
-        # El jugador siempre inicia
+        # El jugador inicia el combate
         self._turno = "jugador"
 
-        # Estado inicial del combate
+        # Estado inicial
         self._finalizado = False
         self._ganador = None
 
@@ -28,33 +28,84 @@ class Combate:
     def ganador(self):
         return self._ganador
 
-    # Ejecuta el ataque normal del jugador
+    # Ejecuta un ataque normal del jugador
     def atacar_jugador(self):
 
         # Evita acciones después de finalizar
         if self._finalizado:
             return None
 
-        # Valida que sea el turno del jugador
+        # Valida el turno
         if self._turno != "jugador":
             return None
 
         # Ejecuta el ataque
         danio = self._jugador.atacar(self._enemigo)
 
-        # Revisa victoria o derrota
+        # Verifica victoria o derrota
         self._actualizar_estado()
 
-        # Cambia el turno si el combate continúa
+        # Cambia el turno
         if not self._finalizado:
             self._turno = "enemigo"
 
-        # Devuelve información útil para la interfaz
         return {
             "accion": "Ataque normal",
             "danio": danio,
             "atacante": self._jugador.nombre,
             "objetivo": self._enemigo.nombre
+        }
+
+    # Ejecuta la habilidad especial del jugador
+    def usar_habilidad_jugador(self):
+
+        # Evita acciones después de finalizar
+        if self._finalizado:
+            return None
+
+        # Valida el turno
+        if self._turno != "jugador":
+            return None
+
+        # Ejecuta la habilidad
+        resultado = self._jugador.usar_habilidad_especial(
+            self._enemigo
+        )
+
+        # Verifica victoria o derrota
+        self._actualizar_estado()
+
+        # Cambia el turno
+        if not self._finalizado:
+            self._turno = "enemigo"
+
+        return {
+            "accion": resultado["nombre"],
+            "danio": resultado["danio"],
+            "atacante": self._jugador.nombre,
+            "objetivo": self._enemigo.nombre
+        }
+
+    # Permite al jugador defenderse
+    def defender_jugador(self):
+
+        # Evita acciones después de finalizar
+        if self._finalizado:
+            return None
+
+        # Valida el turno
+        if self._turno != "jugador":
+            return None
+
+        # Activa la defensa
+        self._jugador.defenderse()
+
+        # Cambia al turno enemigo
+        self._turno = "enemigo"
+
+        return {
+            "accion": "Defenderse",
+            "atacante": self._jugador.nombre
         }
 
     # Ejecuta automáticamente el turno enemigo
@@ -64,16 +115,16 @@ class Combate:
         if self._finalizado:
             return None
 
-        # Valida que sea el turno enemigo
+        # Valida el turno
         if self._turno != "enemigo":
             return None
 
-        # El enemigo decide qué acción realizar
+        # El enemigo decide su acción
         danio, accion = self._enemigo.realizar_turno(
             self._jugador
         )
 
-        # Revisa victoria o derrota
+        # Verifica victoria o derrota
         self._actualizar_estado()
 
         # Devuelve el turno al jugador
@@ -99,4 +150,3 @@ class Combate:
         elif not self._jugador.esta_vivo:
             self._finalizado = True
             self._ganador = self._enemigo.nombre
-            

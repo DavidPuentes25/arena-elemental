@@ -14,16 +14,18 @@ class Guerrero(Personaje):
             defensa=15
         )
 
-    # Polimorfismo: habilidad específica del Guerrero
+    # Polimorfismo: habilidad propia del Guerrero
     def usar_habilidad_especial(self, objetivo):
 
-        # Golpe fuerte aumenta el ataque en un 50 %
+        # Aumenta el ataque en un 50 %
         ataque_especial = int(self.ataque * 1.5)
 
-        # Calcula el daño teniendo en cuenta la defensa enemiga
+        # Calcula y aplica el daño
         danio = max(1, ataque_especial - objetivo.defensa)
-
-        # Aplica el daño al objetivo
         objetivo.recibir_danio(danio)
 
-        return danio
+        # Devuelve información de la habilidad
+        return {
+            "nombre": "Golpe fuerte",
+            "danio": danio
+        }
