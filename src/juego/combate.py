@@ -31,21 +31,18 @@ class Combate:
     # Ejecuta un ataque normal del jugador
     def atacar_jugador(self):
 
-        # Evita acciones después de finalizar
         if self._finalizado:
             return None
 
-        # Valida el turno
         if self._turno != "jugador":
             return None
 
-        # Ejecuta el ataque
-        danio = self._jugador.atacar(self._enemigo)
+        danio = self._jugador.atacar(
+            self._enemigo
+        )
 
-        # Verifica victoria o derrota
         self._actualizar_estado()
 
-        # Cambia el turno
         if not self._finalizado:
             self._turno = "enemigo"
 
@@ -59,23 +56,20 @@ class Combate:
     # Ejecuta la habilidad especial del jugador
     def usar_habilidad_jugador(self):
 
-        # Evita acciones después de finalizar
         if self._finalizado:
             return None
 
-        # Valida el turno
         if self._turno != "jugador":
             return None
 
-        # Ejecuta la habilidad
-        resultado = self._jugador.usar_habilidad_especial(
-            self._enemigo
+        resultado = (
+            self._jugador.usar_habilidad_especial(
+                self._enemigo
+            )
         )
 
-        # Verifica victoria o derrota
         self._actualizar_estado()
 
-        # Cambia el turno
         if not self._finalizado:
             self._turno = "enemigo"
 
@@ -89,18 +83,14 @@ class Combate:
     # Permite al jugador defenderse
     def defender_jugador(self):
 
-        # Evita acciones después de finalizar
         if self._finalizado:
             return None
 
-        # Valida el turno
         if self._turno != "jugador":
             return None
 
-        # Activa la defensa
         self._jugador.defenderse()
 
-        # Cambia al turno enemigo
         self._turno = "enemigo"
 
         return {
@@ -108,26 +98,53 @@ class Combate:
             "atacante": self._jugador.nombre
         }
 
-    # Ejecuta automáticamente el turno enemigo
-    def turno_enemigo(self):
+    # Permite utilizar un objeto
+    def usar_objeto_jugador(self, indice: int):
 
-        # Evita acciones después de finalizar
         if self._finalizado:
             return None
 
-        # Valida el turno
+        if self._turno != "jugador":
+            return None
+
+        resultado = self._jugador.usar_objeto(
+            indice
+        )
+
+        # Valida que exista el objeto
+        if resultado is None:
+            return None
+
+        self._turno = "enemigo"
+
+        return {
+            "accion": "Usar objeto",
+            "objeto": resultado["objeto"],
+            "efecto": resultado["efecto"],
+            "cantidad": resultado.get(
+                "cantidad",
+                0
+            ),
+            "atacante": self._jugador.nombre
+        }
+
+    # Ejecuta automáticamente el turno enemigo
+    def turno_enemigo(self):
+
+        if self._finalizado:
+            return None
+
         if self._turno != "enemigo":
             return None
 
-        # El enemigo decide su acción
-        danio, accion = self._enemigo.realizar_turno(
-            self._jugador
+        danio, accion = (
+            self._enemigo.realizar_turno(
+                self._jugador
+            )
         )
 
-        # Verifica victoria o derrota
         self._actualizar_estado()
 
-        # Devuelve el turno al jugador
         if not self._finalizado:
             self._turno = "jugador"
 

@@ -47,6 +47,8 @@ class Enemigo(ABC):
     def recibir_danio(self, cantidad: int):
         self._vida = max(0, self._vida - cantidad)
 
+        return cantidad
+
     # Calcula el daño según ataque y defensa
     def calcular_danio(self, objetivo):
         return max(1, self._ataque - objetivo.defensa)
@@ -54,10 +56,13 @@ class Enemigo(ABC):
     # Ejecuta un ataque normal
     def atacar(self, objetivo):
         danio = self.calcular_danio(objetivo)
-        objetivo.recibir_danio(danio)
-        return danio
 
-    # Polimorfismo: cada enemigo tendrá su propio turno
+        # Obtiene el daño realmente aplicado
+        danio_real = objetivo.recibir_danio(danio)
+
+        return danio_real
+
+    # Cada enemigo tendrá su propio comportamiento
     @abstractmethod
     def realizar_turno(self, objetivo):
         pass

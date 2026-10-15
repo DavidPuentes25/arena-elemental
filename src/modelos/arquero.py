@@ -17,23 +17,22 @@ class Arquero(Personaje):
             defensa=10
         )
 
-    # Polimorfismo: habilidad específica del Arquero
-    def usar_habilidad_especial(self, objetivo):
+    # Polimorfismo: habilidad propia del Arquero
+def usar_habilidad_especial(self, objetivo):
 
-        # Probabilidad de golpe crítico del 50 %
-        es_critico = random.random() < 0.5
+    # 50 % de probabilidad de golpe crítico
+    es_critico = random.random() < 0.5
 
-        # Si es crítico, duplica el ataque
-        multiplicador = 2 if es_critico else 1.2
+    # Define el multiplicador del ataque
+    multiplicador = 2 if es_critico else 1.2
 
-        # Calcula el ataque especial
-        ataque_especial = int(self.ataque * multiplicador)
+    # Calcula y aplica el daño
+    ataque_especial = int(self.ataque * multiplicador)
+    danio = max(1, ataque_especial - objetivo.defensa)
+    objetivo.recibir_danio(danio)
 
-        # Calcula el daño final
-        danio = max(1, ataque_especial - objetivo.defensa)
-
-        # Aplica el daño al objetivo
-        objetivo.recibir_danio(danio)
-
-        # Devuelve daño y si fue crítico
-        return danio, es_critico
+    # Devuelve información de la habilidad
+    return {
+        "nombre": "Disparo crítico" if es_critico else "Disparo preciso",
+        "danio": danio
+    }

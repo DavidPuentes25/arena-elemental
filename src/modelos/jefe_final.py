@@ -32,12 +32,12 @@ class JefeFinal(Enemigo):
             # Calcula el daño final
             danio = max(1, ataque_especial - objetivo.defensa)
 
-            # Aplica el daño
-            objetivo.recibir_danio(danio)
+            # Aplica el daño y obtiene el daño real
+            danio_real = objetivo.recibir_danio(danio)
 
-            return danio, "Golpe devastador"
+            return danio_real, "Golpe devastador"
 
-        # Ataque normal en los demás casos
+        # En los demás casos realiza ataque normal
         danio = self.atacar(objetivo)
 
         return danio, "Ataque normal"

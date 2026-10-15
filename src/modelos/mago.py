@@ -14,18 +14,16 @@ class Mago(Personaje):
             defensa=8
         )
 
-    # Polimorfismo: habilidad propia del Mago
+# Polimorfismo: habilidad propia del Mago
 def usar_habilidad_especial(self, objetivo):
 
-    # Aumenta el poder mágico en un 80 %
     ataque_magico = int(self.ataque * 1.8)
-
-    # Calcula y aplica el daño
     danio = max(1, ataque_magico - objetivo.defensa)
-    objetivo.recibir_danio(danio)
 
-    # Devuelve información de la habilidad
+    # Aplica y obtiene el daño real
+    danio_real = objetivo.recibir_danio(danio)
+
     return {
         "nombre": "Ataque mágico",
-        "danio": danio
+        "danio": danio_real
     }
