@@ -10,7 +10,7 @@ class Mago(Personaje):
         super().__init__(
             nombre=nombre,
             vida=90,
-            ataque=30,
+            ataque=40,
             defensa=8
         )
 

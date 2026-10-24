@@ -12,8 +12,8 @@ class JefeFinal(Enemigo):
     def __init__(self):
         super().__init__(
             nombre="Guardián Elemental",
-            vida=180,
-            ataque=30,
+            vida=500,
+            ataque=40,
             defensa=15
         )
 

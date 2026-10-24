@@ -10,10 +10,10 @@ from src.modelos.arquero import Arquero
 from src.modelos.goblin import Goblin
 from src.modelos.orco import Orco
 from src.modelos.jefe_final import JefeFinal
-
+from src.objetos.escudo_protector import EscudoProtector
 from src.objetos.pocion_vida import PocionVida
 from src.objetos.escudo_protector import EscudoProtector
-
+from src.interfaz.pantalla_resultado import PantallaResultado
 from src.persistencia.base_datos import RepositorioPartida
 
 
@@ -78,23 +78,48 @@ def cargar_inventario(jugador, inventario):
 # Crea una partida nueva
 def iniciar_nueva_partida():
 
-    # Temporal hasta crear selección
+    # Crear jugador
     jugador = Guerrero("Ares")
 
-    # Objeto inicial
+    # Objetos temporales para probar el inventario
     jugador.agregar_objeto(
         PocionVida()
     )
 
+    jugador.agregar_objeto(
+        EscudoProtector()
+    )
+
+    # Primer enemigo
     enemigo = Goblin()
 
+    # Iniciar combate
     pantalla = PantallaCombate(
         jugador,
         enemigo
     )
 
-    pantalla.ejecutar()
+    resultado = pantalla.ejecutar()
 
+    # Victoria
+    if resultado == "victoria":
+
+        pantalla_resultado = PantallaResultado(
+            "victoria"
+        )
+
+        return pantalla_resultado.ejecutar()
+
+    # Derrota
+    elif resultado == "derrota":
+
+        pantalla_resultado = PantallaResultado(
+            "derrota"
+        )
+
+        return pantalla_resultado.ejecutar()
+
+    return "salir"
 
 # Recupera una partida desde SQLite
 def continuar_partida(repo):
@@ -102,21 +127,18 @@ def continuar_partida(repo):
     datos = repo.cargar()
 
     if datos is None:
-        return
+        return "menu"
 
-    # Reconstruye al personaje
     jugador = crear_personaje(
         datos["personaje"],
         datos["nombre"]
     )
 
-    # Recupera inventario
     cargar_inventario(
         jugador,
         datos["inventario"]
     )
 
-    # Recupera el siguiente enemigo
     enemigo = crear_enemigo(
         datos["siguiente_enemigo"]
     )
@@ -126,7 +148,21 @@ def continuar_partida(repo):
         enemigo
     )
 
-    pantalla.ejecutar()
+    resultado = pantalla.ejecutar()
+
+    if resultado == "victoria":
+        pantalla_resultado = PantallaResultado(
+            "victoria"
+        )
+        return pantalla_resultado.ejecutar()
+
+    elif resultado == "derrota":
+        pantalla_resultado = PantallaResultado(
+            "derrota"
+        )
+        return pantalla_resultado.ejecutar()
+
+    return "salir"
 
 
 def main():
@@ -147,10 +183,16 @@ def main():
             opcion = menu.ejecutar()
 
             if opcion == "jugar":
-                iniciar_nueva_partida()
+                accion = iniciar_nueva_partida()
+
+                if accion == "salir":
+                   break
 
             elif opcion == "cargar":
-                continuar_partida(repo)
+                accion = continuar_partida(repo)
+
+                if accion == "salir":
+                 break
 
             elif opcion == "salir":
                 break

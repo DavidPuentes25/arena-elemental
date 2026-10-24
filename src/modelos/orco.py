@@ -12,8 +12,8 @@ class Orco(Enemigo):
     def __init__(self):
         super().__init__(
             nombre="Orco",
-            vida=110,
-            ataque=24,
+            vida=250,
+            ataque=30,
             defensa=12
         )
 
@@ -30,10 +30,10 @@ class Orco(Enemigo):
             # Calcula el daño final
             danio = max(1, ataque_especial - objetivo.defensa)
 
-            # Aplica el daño
-            objetivo.recibir_danio(danio)
+            # Aplica el daño y obtiene el daño real
+            danio_real = objetivo.recibir_danio(danio)
 
-            return danio, "Golpe fuerte"
+            return danio_real, "Golpe fuerte"
 
         # Si no usa habilidad, realiza ataque normal
         danio = self.atacar(objetivo)
