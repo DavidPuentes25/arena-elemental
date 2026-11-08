@@ -3,12 +3,10 @@ import pygame
 
 from src.juego.combate import Combate
 
-
 BASE_DIR = Path(__file__).resolve().parents[2]
 
 
 class Boton:
-
     def __init__(self, x, y, ancho, alto, texto, fuente):
         self.rect = pygame.Rect(x, y, ancho, alto)
         self.texto = texto
@@ -19,10 +17,13 @@ class Boton:
 
         if not habilitado:
             color = (70, 70, 70)
+            borde = (120, 120, 120)
         elif self.rect.collidepoint(mouse):
             color = (122, 79, 40)
+            borde = (255, 220, 120)
         else:
             color = (89, 55, 32)
+            borde = (224, 185, 105)
 
         pygame.draw.rect(
             pantalla,
@@ -33,7 +34,7 @@ class Boton:
 
         pygame.draw.rect(
             pantalla,
-            (224, 185, 105),
+            borde,
             self.rect,
             2,
             border_radius=10
@@ -59,7 +60,6 @@ class Boton:
 
 
 class PantallaCombate:
-
     def __init__(self, jugador, enemigo):
         pygame.init()
 
@@ -74,10 +74,13 @@ class PantallaCombate:
             (self.ancho, self.alto)
         )
 
-        pygame.display.set_caption("Arena Elemental")
+        pygame.display.set_caption(
+            "Arena Elemental"
+        )
 
         self.reloj = pygame.time.Clock()
 
+        # Fuentes
         self.fuente_titulo = pygame.font.SysFont(
             "arial",
             30,
@@ -107,6 +110,7 @@ class PantallaCombate:
             bold=True
         )
 
+        # Estado visual
         self.pose_jugador = "idle"
         self.pose_enemigo = "idle"
 
@@ -114,6 +118,7 @@ class PantallaCombate:
         self.accion_pendiente = None
         self.tiempo_animacion = 0
 
+        # Inventario
         self.menu_objetos_abierto = False
         self.opciones_objetos = []
 
@@ -124,39 +129,73 @@ class PantallaCombate:
             45
         )
 
+        # Habilidades
+        self.menu_habilidades_abierto = False
+
+        self.rect_habilidades = [
+            pygame.Rect(
+                310,
+                245 + (i * 65),
+                380,
+                52
+            )
+            for i in range(3)
+        ]
+
+        self.rect_volver_habilidades = pygame.Rect(
+            400,
+            455,
+            200,
+            45
+        )
+
+        # Mensajes
         self.mensajes = [
             f"Comienza el combate contra {enemigo.nombre}."
         ]
 
         self.cargar_recursos()
 
+        # Botones
         self.boton_atacar = Boton(
-            140, 515, 160, 50,
+            140,
+            515,
+            160,
+            50,
             "ATACAR",
             self.fuente
         )
 
         self.boton_habilidad = Boton(
-            325, 515, 160, 50,
+            325,
+            515,
+            160,
+            50,
             "HABILIDAD",
             self.fuente
         )
 
         self.boton_defender = Boton(
-            510, 515, 160, 50,
+            510,
+            515,
+            160,
+            50,
             "DEFENDER",
             self.fuente
         )
 
         self.boton_objeto = Boton(
-            695, 515, 160, 50,
+            695,
+            515,
+            160,
+            50,
             "OBJETO",
             self.fuente
         )
 
-    # ---------------------------------------------------------
+    # =====================================================
     # RECURSOS
-    # ---------------------------------------------------------
+    # =====================================================
 
     def cargar_imagen(self, ruta, alto=None):
         imagen = pygame.image.load(
@@ -167,7 +206,9 @@ class PantallaCombate:
             return imagen
 
         proporcion = alto / imagen.get_height()
-        ancho = int(imagen.get_width() * proporcion)
+        ancho = int(
+            imagen.get_width() * proporcion
+        )
 
         return pygame.transform.smoothscale(
             imagen,
@@ -191,14 +232,14 @@ class PantallaCombate:
             (self.ancho, self.alto)
         )
 
-        ruta_guerrero = (
+        ruta_jugador = (
             BASE_DIR
             / "assets"
             / "personajes"
             / "guerrero"
         )
 
-        ruta_goblin = (
+        ruta_enemigo = (
             BASE_DIR
             / "assets"
             / "enemigos"
@@ -207,53 +248,53 @@ class PantallaCombate:
 
         self.sprites_jugador = {
             "idle": self.cargar_imagen(
-                ruta_guerrero / "idle.png",
+                ruta_jugador / "idle.png",
                 340
             ),
             "ataque": self.cargar_imagen(
-                ruta_guerrero / "ataque.png",
+                ruta_jugador / "ataque.png",
                 360
             ),
             "habilidad": self.cargar_imagen(
-                ruta_guerrero / "habilidad.png",
+                ruta_jugador / "habilidad.png",
                 370
             ),
             "defensa": self.cargar_imagen(
-                ruta_guerrero / "defensa.png",
+                ruta_jugador / "defensa.png",
                 350
             ),
             "derrotado": self.cargar_imagen(
-                ruta_guerrero / "derrotado.png",
+                ruta_jugador / "derrotado.png",
                 300
-            )
+            ),
         }
 
         self.sprites_enemigo = {
             "idle": self.cargar_imagen(
-                ruta_goblin / "idle.png",
+                ruta_enemigo / "idle.png",
                 300
             ),
             "ataque": self.cargar_imagen(
-                ruta_goblin / "ataque.png",
+                ruta_enemigo / "ataque.png",
                 325
             ),
             "habilidad": self.cargar_imagen(
-                ruta_goblin / "habilidad.png",
+                ruta_enemigo / "habilidad.png",
                 330
             ),
             "defensa": self.cargar_imagen(
-                ruta_goblin / "defensa.png",
+                ruta_enemigo / "defensa.png",
                 300
             ),
             "derrotado": self.cargar_imagen(
-                ruta_goblin / "derrotado.png",
+                ruta_enemigo / "derrotado.png",
                 260
-            )
+            ),
         }
 
-    # ---------------------------------------------------------
-    # ELEMENTOS VISUALES
-    # ---------------------------------------------------------
+    # =====================================================
+    # VISUALES
+    # =====================================================
 
     def dibujar_barra_vida(
         self,
@@ -263,8 +304,13 @@ class PantallaCombate:
         vida,
         vida_maxima
     ):
-        porcentaje = vida / vida_maxima
-        porcentaje = max(0, min(1, porcentaje))
+        porcentaje = max(
+            0,
+            min(
+                1,
+                vida / vida_maxima
+            )
+        )
 
         pygame.draw.rect(
             self.pantalla,
@@ -337,13 +383,8 @@ class PantallaCombate:
         if turnos <= 0:
             return
 
-        panel_x = 80
-        panel_y = 130
-        panel_ancho = 250
-        panel_alto = 58
-
         panel = pygame.Surface(
-            (panel_ancho, panel_alto),
+            (250, 58),
             pygame.SRCALPHA
         )
 
@@ -356,7 +397,7 @@ class PantallaCombate:
 
         pygame.draw.rect(
             panel,
-            (100, 205, 255, 255),
+            (100, 205, 255),
             panel.get_rect(),
             2,
             border_radius=12
@@ -364,39 +405,39 @@ class PantallaCombate:
 
         self.pantalla.blit(
             panel,
-            (panel_x, panel_y)
+            (80, 130)
         )
 
-        puntos_escudo = [
+        puntos = [
             (95, 142),
             (108, 137),
             (121, 142),
             (119, 158),
             (108, 169),
-            (97, 158)
+            (97, 158),
         ]
 
         pygame.draw.polygon(
             self.pantalla,
             (100, 205, 255),
-            puntos_escudo
+            puntos
         )
 
         pygame.draw.polygon(
             self.pantalla,
             (220, 245, 255),
-            puntos_escudo,
+            puntos,
             2
         )
 
-        texto_estado = self.fuente_estado.render(
-            "ESCUDO  -30% DAÑO",
+        texto = self.fuente_estado.render(
+            "ESCUDO -30% DAÑO",
             True,
             (220, 245, 255)
         )
 
         self.pantalla.blit(
-            texto_estado,
+            texto,
             (130, 138)
         )
 
@@ -424,19 +465,75 @@ class PantallaCombate:
                 1
             )
 
-    # ---------------------------------------------------------
+    def dibujar_estado_grito(self):
+        turnos = getattr(
+            self.jugador,
+            "turnos_grito",
+            0
+        )
+
+        if turnos <= 0:
+            return
+
+        panel = pygame.Surface(
+            (250, 46),
+            pygame.SRCALPHA
+        )
+
+        pygame.draw.rect(
+            panel,
+            (55, 30, 15, 220),
+            panel.get_rect(),
+            border_radius=12
+        )
+
+        pygame.draw.rect(
+            panel,
+            (255, 170, 70),
+            panel.get_rect(),
+            2,
+            border_radius=12
+        )
+
+        self.pantalla.blit(
+            panel,
+            (80, 195)
+        )
+
+        texto = self.fuente_estado.render(
+            f"GRITO DE GUERRA +30% ({turnos})",
+            True,
+            (255, 220, 150)
+        )
+
+        self.pantalla.blit(
+            texto,
+            (95, 210)
+        )
+
+    # =====================================================
     # MENSAJES
-    # ---------------------------------------------------------
+    # =====================================================
 
     def agregar_mensaje(self, mensaje):
-        self.mensajes.append(mensaje)
-        self.mensajes = self.mensajes[-3:]
+        self.mensajes.append(
+            mensaje
+        )
 
-    def registrar_resultado(self, resultado):
+        self.mensajes = self.mensajes[
+            -3:
+        ]
+
+    def registrar_resultado(
+        self,
+        resultado
+    ):
         if resultado is None:
             return
 
-        accion = resultado.get("accion")
+        accion = resultado.get(
+            "accion"
+        )
 
         if accion == "Defenderse":
             self.agregar_mensaje(
@@ -444,30 +541,51 @@ class PantallaCombate:
             )
 
         elif accion == "Usar objeto":
-            if resultado["efecto"] == "Curación":
+
+            if resultado.get(
+                "efecto"
+            ) == "Curación":
+
                 self.agregar_mensaje(
                     f"{resultado['atacante']} usa "
                     f"{resultado['objeto']} y recupera "
-                    f"{resultado['cantidad']} HP."
+                    f"{resultado.get('cantidad', 0)} HP."
                 )
+
             else:
                 self.agregar_mensaje(
                     f"{resultado['atacante']} activa "
                     f"{resultado['objeto']}."
                 )
 
+        elif accion == "Grito de guerra":
+            self.agregar_mensaje(
+                f"{resultado['atacante']} activa "
+                "Grito de guerra."
+            )
+
+        elif accion == "Guardia férrea":
+            self.agregar_mensaje(
+                f"{resultado['atacante']} activa "
+                "Guardia férrea."
+            )
+
         else:
             self.agregar_mensaje(
                 f"{resultado['atacante']} usa "
-                f"{resultado['accion']} y causa "
-                f"{resultado['danio']} de daño."
+                f"{resultado.get('accion', 'una acción')} "
+                f"y causa "
+                f"{resultado.get('danio', 0)} de daño."
             )
 
-    # ---------------------------------------------------------
+    # =====================================================
     # ACCIONES DEL JUGADOR
-    # ---------------------------------------------------------
+    # =====================================================
 
-    def procesar_accion(self, accion):
+    def procesar_accion(
+        self,
+        accion
+    ):
         if self.bloqueado:
             return
 
@@ -480,22 +598,37 @@ class PantallaCombate:
         resultado = None
 
         if accion == "atacar":
-            self.pose_jugador = "ataque"
-            resultado = self.combate.atacar_jugador()
 
-        elif accion == "habilidad":
-            self.pose_jugador = "habilidad"
-            resultado = self.combate.usar_habilidad_jugador()
+            self.pose_jugador = "ataque"
+
+            resultado = (
+                self.combate.atacar_jugador()
+            )
 
         elif accion == "defender":
-            self.pose_jugador = "defensa"
-            resultado = self.combate.defender_jugador()
 
-        self.registrar_resultado(resultado)
+            self.pose_jugador = "defensa"
+
+            resultado = (
+                self.combate.defender_jugador()
+            )
+
+        if resultado is None:
+            return
+
+        self.registrar_resultado(
+            resultado
+        )
 
         if self.combate.finalizado:
-            if self.combate.ganador == self.jugador.nombre:
-                self.pose_enemigo = "derrotado"
+
+            if (
+                self.combate.ganador
+                == self.jugador.nombre
+            ):
+                self.pose_enemigo = (
+                    "derrotado"
+                )
 
                 self.agregar_mensaje(
                     f"¡{self.jugador.nombre} ganó!"
@@ -504,52 +637,77 @@ class PantallaCombate:
             return
 
         self.bloqueado = True
-        self.accion_pendiente = "enemigo"
 
-        self.tiempo_animacion = (
-            pygame.time.get_ticks() + 600
+        self.accion_pendiente = (
+            "enemigo"
         )
 
-    # ---------------------------------------------------------
-    # TURNO DEL ENEMIGO
-    # ---------------------------------------------------------
+        self.tiempo_animacion = (
+            pygame.time.get_ticks()
+            + 600
+        )
+
+    # =====================================================
+    # TURNO ENEMIGO
+    # =====================================================
 
     def ejecutar_turno_enemigo(self):
-        resultado = self.combate.turno_enemigo()
+        resultado = (
+            self.combate.turno_enemigo()
+        )
 
         if resultado is None:
             return
 
-        accion = resultado["accion"].lower()
+        accion = resultado.get(
+            "accion",
+            ""
+        ).lower()
 
         if (
             "fuerte" in accion
             or "devastador" in accion
             or "especial" in accion
         ):
-            self.pose_enemigo = "habilidad"
+            self.pose_enemigo = (
+                "habilidad"
+            )
         else:
-            self.pose_enemigo = "ataque"
+            self.pose_enemigo = (
+                "ataque"
+            )
 
-        self.registrar_resultado(resultado)
-
-        if self.combate.finalizado:
-            if self.combate.ganador != self.jugador.nombre:
-                self.pose_jugador = "derrotado"
-
-                self.agregar_mensaje(
-                    f"{self.jugador.nombre} ha sido derrotado."
-                )
-
-        self.accion_pendiente = "fin_enemigo"
-
-        self.tiempo_animacion = (
-            pygame.time.get_ticks() + 600
+        self.registrar_resultado(
+            resultado
         )
 
-    # ---------------------------------------------------------
+        if self.combate.finalizado:
+
+            if (
+                self.combate.ganador
+                != self.jugador.nombre
+            ):
+                self.pose_jugador = (
+                    "derrotado"
+                )
+
+                self.agregar_mensaje(
+                    f"{self.jugador.nombre} "
+                    "ha sido derrotado."
+                )
+
+        self.accion_pendiente = (
+            "fin_enemigo"
+        )
+
+        self.tiempo_animacion = (
+            pygame.time.get_ticks()
+            + 600
+        )
+
+    # =====================================================
     # ANIMACIONES
-    # ---------------------------------------------------------
+    # =====================================================
 
     def actualizar_animaciones(self):
         if not self.bloqueado:
@@ -561,12 +719,17 @@ class PantallaCombate:
             return
 
         if self.accion_pendiente == "enemigo":
+
             if self.pose_jugador != "defensa":
                 self.pose_jugador = "idle"
 
             self.ejecutar_turno_enemigo()
 
-        elif self.accion_pendiente == "fin_enemigo":
+        elif (
+            self.accion_pendiente
+            == "fin_enemigo"
+        ):
+
             if not self.combate.finalizado:
                 self.pose_jugador = "idle"
                 self.pose_enemigo = "idle"
@@ -574,18 +737,30 @@ class PantallaCombate:
             self.accion_pendiente = None
             self.bloqueado = False
 
-    # ---------------------------------------------------------
+    # =====================================================
     # INVENTARIO
-    # ---------------------------------------------------------
+    # =====================================================
 
     def abrir_menu_objetos(self):
+        if self.bloqueado:
+            return
+
+        if self.combate.finalizado:
+            return
+
+        if self.combate.turno != "jugador":
+            return
+
         if not self.jugador.inventario:
+
             self.agregar_mensaje(
                 "No tienes objetos disponibles."
             )
+
             return
 
         self.menu_objetos_abierto = True
+
         self.actualizar_opciones_objetos()
 
     def cerrar_menu_objetos(self):
@@ -598,7 +773,9 @@ class PantallaCombate:
         for indice, objeto in enumerate(
             self.jugador.inventario
         ):
+
             if objeto.nombre not in objetos:
+
                 objetos[objeto.nombre] = {
                     "cantidad": 0,
                     "indice": indice
@@ -613,6 +790,7 @@ class PantallaCombate:
         y = 275
 
         for nombre, datos in objetos.items():
+
             rect = pygame.Rect(
                 325,
                 y,
@@ -625,7 +803,7 @@ class PantallaCombate:
                     "nombre": nombre,
                     "cantidad": datos["cantidad"],
                     "indice": datos["indice"],
-                    "rect": rect
+                    "rect": rect,
                 }
             )
 
@@ -638,8 +816,10 @@ class PantallaCombate:
         if self.bloqueado:
             return
 
-        resultado = self.combate.usar_objeto_jugador(
-            indice
+        resultado = (
+            self.combate.usar_objeto_jugador(
+                indice
+            )
         )
 
         if resultado is None:
@@ -647,29 +827,36 @@ class PantallaCombate:
 
         self.cerrar_menu_objetos()
 
-        if resultado["efecto"] == "Curación":
+        if resultado.get(
+            "efecto"
+        ) == "Curación":
+
             self.agregar_mensaje(
                 f"{self.jugador.nombre} usa "
                 f"{resultado['objeto']} y recupera "
-                f"{resultado['cantidad']} HP."
+                f"{resultado.get('cantidad', 0)} HP."
             )
 
             self.pose_jugador = "idle"
 
         else:
+
             self.agregar_mensaje(
                 f"{self.jugador.nombre} activa "
-                f"{resultado['objeto']}: "
-                "-30% daño durante 5 turnos."
+                f"{resultado['objeto']}."
             )
 
             self.pose_jugador = "defensa"
 
         self.bloqueado = True
-        self.accion_pendiente = "enemigo"
+
+        self.accion_pendiente = (
+            "enemigo"
+        )
 
         self.tiempo_animacion = (
-            pygame.time.get_ticks() + 600
+            pygame.time.get_ticks()
+            + 600
         )
 
     def manejar_evento_menu_objetos(
@@ -683,17 +870,21 @@ class PantallaCombate:
             return
 
         for opcion in self.opciones_objetos:
+
             if opcion["rect"].collidepoint(
                 evento.pos
             ):
+
                 self.usar_objeto_seleccionado(
                     opcion["indice"]
                 )
+
                 return
 
         if self.rect_volver_objetos.collidepoint(
             evento.pos
         ):
+
             self.cerrar_menu_objetos()
 
     def dibujar_menu_objetos(self):
@@ -711,37 +902,24 @@ class PantallaCombate:
             (0, 0)
         )
 
-        panel_rect = pygame.Rect(
+        panel = pygame.Rect(
             275,
             170,
             450,
             340
         )
 
-        panel = pygame.Surface(
-            (
-                panel_rect.width,
-                panel_rect.height
-            ),
-            pygame.SRCALPHA
-        )
-
         pygame.draw.rect(
+            self.pantalla,
+            (35, 25, 20),
             panel,
-            (35, 25, 20, 240),
-            panel.get_rect(),
             border_radius=18
-        )
-
-        self.pantalla.blit(
-            panel,
-            panel_rect.topleft
         )
 
         pygame.draw.rect(
             self.pantalla,
             (220, 165, 70),
-            panel_rect,
+            panel,
             3,
             border_radius=18
         )
@@ -762,11 +940,13 @@ class PantallaCombate:
         mouse = pygame.mouse.get_pos()
 
         for opcion in self.opciones_objetos:
+
             rect = opcion["rect"]
 
             if rect.collidepoint(mouse):
                 color = (130, 75, 25)
                 borde = (255, 220, 110)
+
             else:
                 color = (65, 38, 20)
                 borde = (210, 160, 70)
@@ -786,20 +966,16 @@ class PantallaCombate:
                 border_radius=10
             )
 
-            texto = (
+            texto = self.fuente_boton.render(
                 f"{opcion['nombre']} "
-                f"x{opcion['cantidad']}"
-            )
-
-            superficie_texto = self.fuente_boton.render(
-                texto,
+                f"x{opcion['cantidad']}",
                 True,
                 (255, 245, 220)
             )
 
             self.pantalla.blit(
-                superficie_texto,
-                superficie_texto.get_rect(
+                texto,
+                texto.get_rect(
                     center=rect.center
                 )
             )
@@ -807,9 +983,18 @@ class PantallaCombate:
         if self.rect_volver_objetos.collidepoint(
             mouse
         ):
-            color_volver = (90, 65, 45)
+            color_volver = (
+                90,
+                65,
+                45
+            )
+
         else:
-            color_volver = (55, 45, 40)
+            color_volver = (
+                55,
+                45,
+                40
+            )
 
         pygame.draw.rect(
             self.pantalla,
@@ -818,30 +1003,365 @@ class PantallaCombate:
             border_radius=10
         )
 
-        pygame.draw.rect(
-            self.pantalla,
-            (170, 150, 120),
-            self.rect_volver_objetos,
-            2,
-            border_radius=10
-        )
-
-        texto_volver = self.fuente_boton.render(
+        texto = self.fuente_boton.render(
             "VOLVER",
             True,
             (240, 235, 225)
         )
 
         self.pantalla.blit(
-            texto_volver,
-            texto_volver.get_rect(
+            texto,
+            texto.get_rect(
                 center=self.rect_volver_objetos.center
             )
         )
 
-    # ---------------------------------------------------------
+    # =====================================================
+    # HABILIDADES
+    # =====================================================
+
+    def obtener_habilidades(self):
+        return list(
+            getattr(
+                self.jugador,
+                "habilidades",
+                []
+            )
+        )
+
+    def abrir_menu_habilidades(self):
+        if self.bloqueado:
+            return
+
+        if self.combate.finalizado:
+            return
+
+        if self.combate.turno != "jugador":
+            return
+
+        habilidades = (
+            self.obtener_habilidades()
+        )
+
+        if not habilidades:
+
+            self.agregar_mensaje(
+                "No hay habilidades configuradas."
+            )
+
+            return
+
+        self.menu_habilidades_abierto = True
+
+    def cerrar_menu_habilidades(self):
+        self.menu_habilidades_abierto = False
+
+    def dibujar_menu_habilidades(self):
+        sombra = pygame.Surface(
+            (self.ancho, self.alto),
+            pygame.SRCALPHA
+        )
+
+        sombra.fill(
+            (0, 0, 0, 180)
+        )
+
+        self.pantalla.blit(
+            sombra,
+            (0, 0)
+        )
+
+        panel = pygame.Rect(
+            270,
+            150,
+            460,
+            390
+        )
+
+        pygame.draw.rect(
+            self.pantalla,
+            (35, 25, 30),
+            panel,
+            border_radius=16
+        )
+
+        pygame.draw.rect(
+            self.pantalla,
+            (220, 175, 90),
+            panel,
+            3,
+            border_radius=16
+        )
+
+        titulo = self.fuente_titulo.render(
+            "HABILIDADES",
+            True,
+            (255, 220, 130)
+        )
+
+        self.pantalla.blit(
+            titulo,
+            titulo.get_rect(
+                center=(500, 195)
+            )
+        )
+
+        habilidades = (
+            self.obtener_habilidades()
+        )
+
+        mouse = pygame.mouse.get_pos()
+
+        for indice, habilidad in enumerate(
+            habilidades[:3]
+        ):
+
+            rect = (
+                self.rect_habilidades[
+                    indice
+                ]
+            )
+
+            disponible = bool(
+                getattr(
+                    habilidad,
+                    "disponible",
+                    True
+                )
+            )
+
+            if disponible:
+
+                if rect.collidepoint(mouse):
+                    color = (120, 80, 35)
+                    borde = (255, 220, 110)
+
+                else:
+                    color = (75, 50, 30)
+                    borde = (210, 160, 70)
+
+                color_texto = (
+                    255,
+                    245,
+                    220
+                )
+
+            else:
+                color = (50, 50, 50)
+                borde = (100, 100, 100)
+
+                color_texto = (
+                    160,
+                    160,
+                    160
+                )
+
+            pygame.draw.rect(
+                self.pantalla,
+                color,
+                rect,
+                border_radius=10
+            )
+
+            pygame.draw.rect(
+                self.pantalla,
+                borde,
+                rect,
+                2,
+                border_radius=10
+            )
+
+            if disponible:
+                estado = "LISTO"
+
+            else:
+                cooldown = getattr(
+                    habilidad,
+                    "cooldown_actual",
+                    0
+                )
+
+                estado = (
+                    f"{cooldown} TURNOS"
+                )
+
+            nombre = getattr(
+                habilidad,
+                "nombre",
+                f"Habilidad {indice + 1}"
+            )
+
+            texto = self.fuente_pequena.render(
+                f"{nombre} | {estado}",
+                True,
+                color_texto
+            )
+
+            self.pantalla.blit(
+                texto,
+                texto.get_rect(
+                    center=rect.center
+                )
+            )
+
+        if self.rect_volver_habilidades.collidepoint(
+            mouse
+        ):
+            color_volver = (
+                90,
+                65,
+                45
+            )
+
+        else:
+            color_volver = (
+                55,
+                45,
+                40
+            )
+
+        pygame.draw.rect(
+            self.pantalla,
+            color_volver,
+            self.rect_volver_habilidades,
+            border_radius=10
+        )
+
+        texto = self.fuente_boton.render(
+            "VOLVER",
+            True,
+            (240, 235, 225)
+        )
+
+        self.pantalla.blit(
+            texto,
+            texto.get_rect(
+                center=self.rect_volver_habilidades.center
+            )
+        )
+
+    def manejar_evento_habilidades(
+        self,
+        evento
+    ):
+        if evento.type != pygame.MOUSEBUTTONDOWN:
+            return
+
+        if evento.button != 1:
+            return
+
+        if self.rect_volver_habilidades.collidepoint(
+            evento.pos
+        ):
+
+            self.cerrar_menu_habilidades()
+            return
+
+        habilidades = (
+            self.obtener_habilidades()
+        )
+
+        for indice, rect in enumerate(
+            self.rect_habilidades
+        ):
+
+            if not rect.collidepoint(
+                evento.pos
+            ):
+                continue
+
+            if indice >= len(habilidades):
+                return
+
+            habilidad = habilidades[indice]
+
+            disponible = bool(
+                getattr(
+                    habilidad,
+                    "disponible",
+                    True
+                )
+            )
+
+            if not disponible:
+
+                self.agregar_mensaje(
+                    f"{habilidad.nombre} "
+                    "está en recarga."
+                )
+
+                return
+
+            if not hasattr(
+                self.combate,
+                "usar_habilidad_seleccionada"
+            ):
+
+                self.agregar_mensaje(
+                    "Falta conectar habilidades "
+                    "en combate.py."
+                )
+
+                return
+
+            resultado = (
+                self.combate.usar_habilidad_seleccionada(
+                    indice
+                )
+            )
+
+            if resultado is None:
+                return
+
+            self.cerrar_menu_habilidades()
+
+            accion = resultado.get(
+                "accion",
+                habilidad.nombre
+            )
+
+            if accion == "Guardia férrea":
+                self.pose_jugador = (
+                    "defensa"
+                )
+
+            else:
+                self.pose_jugador = (
+                    "habilidad"
+                )
+
+            self.registrar_resultado(
+                resultado
+            )
+
+            if self.combate.finalizado:
+
+                self.pose_enemigo = (
+                    "derrotado"
+                )
+
+                self.agregar_mensaje(
+                    f"¡{self.jugador.nombre} ganó!"
+                )
+
+                return
+
+            self.bloqueado = True
+
+            self.accion_pendiente = (
+                "enemigo"
+            )
+
+            self.tiempo_animacion = (
+                pygame.time.get_ticks()
+                + 600
+            )
+
+            return
+
+    # =====================================================
     # DIBUJO GENERAL
-    # ---------------------------------------------------------
+    # =====================================================
 
     def dibujar(self):
         self.pantalla.blit(
@@ -915,14 +1435,19 @@ class PantallaCombate:
         )
 
         self.dibujar_estado_escudo()
+        self.dibujar_estado_grito()
 
-        sprite_jugador = self.sprites_jugador[
-            self.pose_jugador
-        ]
+        sprite_jugador = (
+            self.sprites_jugador[
+                self.pose_jugador
+            ]
+        )
 
-        sprite_enemigo = self.sprites_enemigo[
-            self.pose_enemigo
-        ]
+        sprite_enemigo = (
+            self.sprites_enemigo[
+                self.pose_enemigo
+            ]
+        )
 
         self.dibujar_sprite(
             sprite_jugador,
@@ -940,6 +1465,7 @@ class PantallaCombate:
             not self.bloqueado
             and not self.combate.finalizado
             and not self.menu_objetos_abierto
+            and not self.menu_habilidades_abierto
         )
 
         self.boton_atacar.dibujar(
@@ -965,6 +1491,7 @@ class PantallaCombate:
         y = 580
 
         for mensaje in self.mensajes:
+
             texto = self.fuente_pequena.render(
                 mensaje,
                 True,
@@ -981,11 +1508,14 @@ class PantallaCombate:
         if self.menu_objetos_abierto:
             self.dibujar_menu_objetos()
 
+        if self.menu_habilidades_abierto:
+            self.dibujar_menu_habilidades()
+
         pygame.display.flip()
 
-    # ---------------------------------------------------------
+    # =====================================================
     # BUCLE PRINCIPAL
-    # ---------------------------------------------------------
+    # =====================================================
 
     def ejecutar(self):
         while True:
@@ -995,10 +1525,20 @@ class PantallaCombate:
                 if evento.type == pygame.QUIT:
                     return "salir"
 
+                if self.menu_habilidades_abierto:
+
+                    self.manejar_evento_habilidades(
+                        evento
+                    )
+
+                    continue
+
                 if self.menu_objetos_abierto:
+
                     self.manejar_evento_menu_objetos(
                         evento
                     )
+
                     continue
 
                 if not self.bloqueado:
@@ -1006,27 +1546,35 @@ class PantallaCombate:
                     if self.boton_atacar.fue_presionado(
                         evento
                     ):
+
                         self.procesar_accion(
                             "atacar"
                         )
 
-                    elif self.boton_habilidad.fue_presionado(
-                        evento
-                    ):
-                        self.procesar_accion(
-                            "habilidad"
+                    elif (
+                        self.boton_habilidad.fue_presionado(
+                            evento
                         )
-
-                    elif self.boton_defender.fue_presionado(
-                        evento
                     ):
+
+                        self.abrir_menu_habilidades()
+
+                    elif (
+                        self.boton_defender.fue_presionado(
+                            evento
+                        )
+                    ):
+
                         self.procesar_accion(
                             "defender"
                         )
 
-                    elif self.boton_objeto.fue_presionado(
-                        evento
+                    elif (
+                        self.boton_objeto.fue_presionado(
+                            evento
+                        )
                     ):
+
                         self.abrir_menu_objetos()
 
             self.actualizar_animaciones()
@@ -1034,18 +1582,31 @@ class PantallaCombate:
             if self.combate.finalizado:
 
                 if self.jugador.esta_vivo:
-                    self.pose_enemigo = "derrotado"
+
+                    self.pose_enemigo = (
+                        "derrotado"
+                    )
+
                     resultado = "victoria"
+
                 else:
-                    self.pose_jugador = "derrotado"
+
+                    self.pose_jugador = (
+                        "derrotado"
+                    )
+
                     resultado = "derrota"
 
                 self.dibujar()
 
-                pygame.time.delay(1000)
+                pygame.time.delay(
+                    1000
+                )
 
                 return resultado
 
             self.dibujar()
 
-            self.reloj.tick(60)
+            self.reloj.tick(
+                60
+            )
