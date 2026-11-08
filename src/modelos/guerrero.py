@@ -7,7 +7,7 @@ class Guerrero(Personaje):
     def __init__(self, nombre: str):
         super().__init__(
             nombre=nombre,
-            vida=120,
+            vida=520,
             ataque=25,
             defensa=15
         )

@@ -1,86 +1,477 @@
-"""Persistencia de Arena Elemental con SQLite (RF-19 a RF-22, RF-25, RNF-12)."""
-import sqlite3
 from pathlib import Path
+from datetime import datetime
 
-RUTA_ESQUEMA = Path(__file__).parent / "schema.sql"  # ruta relativa (RNF-33)
-PERSONAJES = ("Guerrero", "Mago", "Arquero")
-ENEMIGOS = ("Goblin", "Orco", "Guardián Elemental")
-OBJETOS = ("Poción de Vida", "Escudo Protector")
+import sqlite3
+
+
+BASE_DIR = Path(__file__).resolve().parent
 
 
 class RepositorioPartida:
-    """Guarda, carga y elimina la única partida activa."""
 
-    def __init__(self, ruta_bd="arena_elemental.db"):
-        self._conn = sqlite3.connect(ruta_bd)
-        self._conn.execute("PRAGMA foreign_keys = ON")
-        self._conn.executescript(RUTA_ESQUEMA.read_text(encoding="utf-8"))
+    def __init__(
+        self,
+        ruta_bd="arena_elemental.db"
+    ):
+        self.ruta_bd = ruta_bd
 
-    def existe_partida(self):
-        """Determina si 'Continuar partida' debe estar habilitado (RF-01)."""
-        return self.cargar() is not None
+        self.conexion = sqlite3.connect(
+            self.ruta_bd
+        )
 
-    def guardar(self, nombre, personaje, siguiente_enemigo, inventario):
-        """Reemplaza el guardado actual. 'inventario' es {objeto: cantidad} (RF-20)."""
-        if not nombre or not nombre.strip():
-            raise ValueError("El nombre del jugador no puede estar vacío.")
-        if personaje not in PERSONAJES:
-            raise ValueError(f"Personaje no válido: {personaje}")
-        if siguiente_enemigo not in ENEMIGOS[1:]:
-            raise ValueError("Solo se guarda progreso con Orco o Guardián Elemental como siguiente.")
-        for objeto, cantidad in inventario.items():
-            if objeto not in OBJETOS or cantidad < 0:
-                raise ValueError(f"Inventario no válido: {objeto}={cantidad}")
+        self.conexion.row_factory = (
+            sqlite3.Row
+        )
 
-        with self._conn:  # transacción: o se guarda todo o nada
-            self._conn.execute("DELETE FROM partida WHERE id = 1")
-            self._conn.execute(
-                "INSERT INTO partida (id, nombre_jugador, personaje, siguiente_enemigo) "
-                "VALUES (1, ?, ?, ?)",
-                (nombre.strip(), personaje, siguiente_enemigo),
+        self.conexion.execute(
+            "PRAGMA foreign_keys = ON"
+        )
+
+        self._crear_esquema()
+
+    # =====================================================
+    # ESQUEMA
+    # =====================================================
+
+    def _crear_esquema(self):
+        ruta_schema = (
+            BASE_DIR
+            / "schema.sql"
+        )
+
+        with open(
+            ruta_schema,
+            "r",
+            encoding="utf-8"
+        ) as archivo:
+
+            script = archivo.read()
+
+        self.conexion.executescript(
+            script
+        )
+
+        self.conexion.commit()
+
+    # =====================================================
+    # FECHA
+    # =====================================================
+
+    def _fecha_actual(self):
+        return (
+            datetime.now()
+            .astimezone()
+            .isoformat(
+                timespec="seconds"
             )
-            for objeto in OBJETOS:
-                self._conn.execute(
-                    "INSERT INTO inventario (partida_id, objeto, cantidad) VALUES (1, ?, ?)",
-                    (objeto, inventario.get(objeto, 0)),
-                )
+        )
 
-    def cargar(self):
-        """Devuelve un dict con la partida o None si no existe o es inválida (RF-21, RNF-12)."""
+    # =====================================================
+    # CREAR PARTIDA
+    # =====================================================
+
+    def crear_partida(
+        self,
+        nombre_partida,
+        nombre_jugador,
+        personaje,
+        siguiente_enemigo,
+        progreso,
+        inventario=None
+    ):
+        nombre_partida = (
+            nombre_partida.strip()
+        )
+
+        if not nombre_partida:
+            raise ValueError(
+                "El nombre de la partida "
+                "no puede estar vacío."
+            )
+
+        if inventario is None:
+            inventario = {}
+
+        cursor = self.conexion.cursor()
+
         try:
-            fila = self._conn.execute(
-                "SELECT nombre_jugador, personaje, siguiente_enemigo FROM partida WHERE id = 1"
-            ).fetchone()
-            if fila is None:
-                return None
-            inventario = dict(self._conn.execute(
-                "SELECT objeto, cantidad FROM inventario WHERE partida_id = 1"
-            ).fetchall())
-        except sqlite3.Error:
+            cursor.execute(
+                """
+                INSERT INTO partidas (
+                    nombre_partida,
+                    nombre_jugador,
+                    personaje,
+                    siguiente_enemigo,
+                    progreso,
+                    fecha_guardado
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    nombre_partida,
+                    nombre_jugador,
+                    personaje,
+                    siguiente_enemigo,
+                    progreso,
+                    self._fecha_actual()
+                )
+            )
+
+            partida_id = (
+                cursor.lastrowid
+            )
+
+            self._guardar_inventario(
+                cursor,
+                partida_id,
+                inventario
+            )
+
+            self.conexion.commit()
+
+            return partida_id
+
+        except sqlite3.IntegrityError:
+            self.conexion.rollback()
+
+            raise ValueError(
+                "Ya existe una partida "
+                "con ese nombre."
+            )
+
+    # =====================================================
+    # ACTUALIZAR PARTIDA
+    # =====================================================
+
+    def actualizar_partida(
+        self,
+        partida_id,
+        nombre_jugador,
+        personaje,
+        siguiente_enemigo,
+        progreso,
+        inventario=None
+    ):
+        if inventario is None:
+            inventario = {}
+
+        cursor = self.conexion.cursor()
+
+        cursor.execute(
+            """
+            UPDATE partidas
+
+            SET
+                nombre_jugador = ?,
+                personaje = ?,
+                siguiente_enemigo = ?,
+                progreso = ?,
+                fecha_guardado = ?
+
+            WHERE id = ?
+            """,
+            (
+                nombre_jugador,
+                personaje,
+                siguiente_enemigo,
+                progreso,
+                self._fecha_actual(),
+                partida_id
+            )
+        )
+
+        if cursor.rowcount == 0:
+            raise ValueError(
+                "La partida no existe."
+            )
+
+        self._guardar_inventario(
+            cursor,
+            partida_id,
+            inventario
+        )
+
+        self.conexion.commit()
+
+    # =====================================================
+    # INVENTARIO
+    # =====================================================
+
+    def _guardar_inventario(
+        self,
+        cursor,
+        partida_id,
+        inventario
+    ):
+        cursor.execute(
+            """
+            DELETE FROM inventario_partida
+            WHERE partida_id = ?
+            """,
+            (partida_id,)
+        )
+
+        for objeto, cantidad in (
+            inventario.items()
+        ):
+            if cantidad <= 0:
+                continue
+
+            cursor.execute(
+                """
+                INSERT INTO inventario_partida (
+                    partida_id,
+                    objeto,
+                    cantidad
+                )
+                VALUES (?, ?, ?)
+                """,
+                (
+                    partida_id,
+                    objeto,
+                    cantidad
+                )
+            )
+
+    def _cargar_inventario(
+        self,
+        partida_id
+    ):
+        cursor = (
+            self.conexion.cursor()
+        )
+
+        cursor.execute(
+            """
+            SELECT
+                objeto,
+                cantidad
+
+            FROM inventario_partida
+
+            WHERE partida_id = ?
+            """,
+            (partida_id,)
+        )
+
+        inventario = {}
+
+        for fila in cursor.fetchall():
+
+            inventario[
+                fila["objeto"]
+            ] = fila["cantidad"]
+
+        return inventario
+
+    # =====================================================
+    # CARGAR PARTIDA
+    # =====================================================
+
+    def cargar(
+        self,
+        partida_id
+    ):
+        cursor = (
+            self.conexion.cursor()
+        )
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nombre_partida,
+                nombre_jugador,
+                personaje,
+                siguiente_enemigo,
+                progreso,
+                fecha_guardado
+
+            FROM partidas
+
+            WHERE id = ?
+            """,
+            (partida_id,)
+        )
+
+        fila = cursor.fetchone()
+
+        if fila is None:
             return None
+
         return {
-            "nombre": fila[0],
-            "personaje": fila[1],
-            "siguiente_enemigo": fila[2],
-            "inventario": {o: inventario.get(o, 0) for o in OBJETOS},
+            "id": fila["id"],
+
+            "nombre_partida":
+                fila["nombre_partida"],
+
+            "nombre_jugador":
+                fila["nombre_jugador"],
+
+            "personaje":
+                fila["personaje"],
+
+            "siguiente_enemigo":
+                fila["siguiente_enemigo"],
+
+            "progreso":
+                fila["progreso"],
+
+            "fecha_guardado":
+                fila["fecha_guardado"],
+
+            "inventario":
+                self._cargar_inventario(
+                    fila["id"]
+                )
         }
 
-    def eliminar(self):
-        """Borra el progreso tras una derrota (RF-22). El inventario cae en cascada."""
-        with self._conn:
-            self._conn.execute("DELETE FROM partida WHERE id = 1")
+    # =====================================================
+    # LISTAR PARTIDAS
+    # =====================================================
+
+    def listar_partidas(self):
+        cursor = (
+            self.conexion.cursor()
+        )
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nombre_partida,
+                nombre_jugador,
+                personaje,
+                siguiente_enemigo,
+                progreso,
+                fecha_guardado
+
+            FROM partidas
+
+            ORDER BY
+                fecha_guardado DESC
+            """
+        )
+
+        partidas = []
+
+        for fila in cursor.fetchall():
+
+            partidas.append(
+                {
+                    "id": fila["id"],
+
+                    "nombre_partida":
+                        fila["nombre_partida"],
+
+                    "nombre_jugador":
+                        fila["nombre_jugador"],
+
+                    "personaje":
+                        fila["personaje"],
+
+                    "siguiente_enemigo":
+                        fila["siguiente_enemigo"],
+
+                    "progreso":
+                        fila["progreso"],
+
+                    "fecha_guardado":
+                        fila["fecha_guardado"]
+                }
+            )
+
+        return partidas
+
+    # =====================================================
+    # EXISTENCIA
+    # =====================================================
+
+    def existe_partida(self):
+        cursor = (
+            self.conexion.cursor()
+        )
+
+        cursor.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM partidas
+            """
+        )
+
+        fila = cursor.fetchone()
+
+        return fila["total"] > 0
+
+    # =====================================================
+    # ELIMINAR
+    # =====================================================
+
+    def eliminar(
+        self,
+        partida_id
+    ):
+        cursor = (
+            self.conexion.cursor()
+        )
+
+        cursor.execute(
+            """
+            DELETE FROM partidas
+            WHERE id = ?
+            """,
+            (partida_id,)
+        )
+
+        self.conexion.commit()
+
+    # =====================================================
+    # RENOMBRAR
+    # =====================================================
+
+    def renombrar(
+        self,
+        partida_id,
+        nuevo_nombre
+    ):
+        nuevo_nombre = (
+            nuevo_nombre.strip()
+        )
+
+        if not nuevo_nombre:
+            return False
+
+        try:
+            self.conexion.execute(
+                """
+                UPDATE partidas
+
+                SET
+                    nombre_partida = ?,
+                    fecha_guardado = ?
+
+                WHERE id = ?
+                """,
+                (
+                    nuevo_nombre,
+                    self._fecha_actual(),
+                    partida_id
+                )
+            )
+
+            self.conexion.commit()
+
+            return True
+
+        except sqlite3.IntegrityError:
+
+            self.conexion.rollback()
+
+            return False
+
+    # =====================================================
+    # CERRAR
+    # =====================================================
 
     def cerrar(self):
-        self._conn.close()
-
-
-if __name__ == "__main__":
-    repo = RepositorioPartida(":memory:")
-    print("¿Hay partida?", repo.existe_partida())
-    repo.guardar("Ana", "Mago", "Orco", {"Poción de Vida": 1})
-    print(repo.cargar())
-    repo.guardar("Ana", "Mago", "Guardián Elemental", {"Poción de Vida": 1, "Escudo Protector": 1})
-    print(repo.cargar())
-    repo.eliminar()
-    print("Tras derrota:", repo.cargar())
-    repo.cerrar()
+        self.conexion.close()

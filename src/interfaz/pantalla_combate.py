@@ -232,20 +232,43 @@ class PantallaCombate:
             (self.ancho, self.alto)
         )
 
-        ruta_jugador = (
-            BASE_DIR
-            / "assets"
-            / "personajes"
-            / "guerrero"
+        carpetas_personajes = {
+            "Guerrero": "guerrero",
+            "Mago": "mago",
+            "Arquero": "arquero",
+     }
+
+        carpetas_enemigos = {
+            "Goblin": "goblin",
+            "Orco": "orco",
+            "Guardián Elemental": "guardian_elemental",
+        }
+
+        tipo_jugador = self.jugador.__class__.__name__
+
+        if tipo_jugador not in carpetas_personajes:
+          raise ValueError(
+          f"No existe carpeta de sprites para: {tipo_jugador}"
         )
+
+        if self.enemigo.nombre not in carpetas_enemigos:
+           raise ValueError(
+               f"No existe carpeta de sprites para: {self.enemigo.nombre}"
+ )
+
+        ruta_jugador = (
+             BASE_DIR
+             / "assets"
+             / "personajes"
+             / carpetas_personajes[tipo_jugador]
+       )
 
         ruta_enemigo = (
-            BASE_DIR
-            / "assets"
-            / "enemigos"
-            / "goblin"
-        )
-
+             BASE_DIR
+             / "assets"
+             / "enemigos"
+             / carpetas_enemigos[self.enemigo.nombre]
+            )
         self.sprites_jugador = {
             "idle": self.cargar_imagen(
                 ruta_jugador / "idle.png",

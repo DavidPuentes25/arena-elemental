@@ -1,39 +1,166 @@
-# Permite generar valores aleatorios
 import random
 
-# Importa la clase base Personaje
 from src.modelos.personaje import Personaje
+from src.habilidades.habilidad import Habilidad
 
 
-# Arquero hereda las características de Personaje
 class Arquero(Personaje):
 
-    # Define las estadísticas propias del Arquero
     def __init__(self, nombre: str):
         super().__init__(
             nombre=nombre,
             vida=100,
-            ataque=30,
+            ataque=27,
             defensa=10
         )
 
-    # Polimorfismo: habilidad propia del Arquero
-# Polimorfismo: habilidad propia del Arquero
-def usar_habilidad_especial(self, objetivo):
+        # Se activa al usar Evasión.
+        self._evasion_activa = False
 
-    # 50 % de probabilidad de crítico
-    es_critico = random.random() < 0.5
+        self._habilidades = [
+            Habilidad(
+                "Disparo crítico",
+                "50% x2 daño / 50% x1.2 daño",
+                2,
+                Arquero.disparo_critico
+            ),
+            Habilidad(
+                "Flecha perforante",
+                "Ignora la defensa del enemigo",
+                3,
+                Arquero.flecha_perforante
+            ),
+            Habilidad(
+                "Evasión",
+                "80% de evitar el siguiente ataque",
+                4,
+                Arquero.evasion
+            )
+        ]
 
-    multiplicador = 2 if es_critico else 1.2
-    ataque_especial = int(self.ataque * multiplicador)
+    # ==========================================
+    # HABILIDADES
+    # ==========================================
 
-    danio = max(1, ataque_especial - objetivo.defensa)
+    @property
+    def habilidades(self):
+        return self._habilidades
 
-    # Aplica y obtiene el daño real
-    danio_real = objetivo.recibir_danio(danio)
+    # ==========================================
+    # COOLDOWNS
+    # ==========================================
 
-    return {
-        "nombre": "Disparo crítico" if es_critico else "Disparo preciso",
-        "danio": danio_real,
-        "critico": es_critico
-    }
+    def avanzar_cooldowns(
+        self,
+        habilidad_usada=None
+    ):
+        for habilidad in self._habilidades:
+
+            if habilidad is not habilidad_usada:
+                habilidad.avanzar_turno()
+
+    # ==========================================
+    # DISPARO CRÍTICO
+    # ==========================================
+
+    def disparo_critico(
+        self,
+        objetivo
+    ):
+        # 50% de probabilidad para cada resultado.
+        if random.random() < 0.5:
+
+            multiplicador = 2.0
+            tipo = "Crítico"
+
+        else:
+
+            multiplicador = 1.2
+            tipo = "Potenciado"
+
+        danio = max(
+            1,
+            int(self.ataque * multiplicador)
+            - objetivo.defensa
+        )
+
+        danio_real = objetivo.recibir_danio(
+            danio
+        )
+
+        return {
+            "nombre": "Disparo crítico",
+            "danio": danio_real,
+            "tipo": tipo
+        }
+
+    # ==========================================
+    # FLECHA PERFORANTE
+    # ==========================================
+
+    def flecha_perforante(
+        self,
+        objetivo
+    ):
+        # No se resta la defensa del enemigo.
+        danio = self.ataque
+
+        danio_real = objetivo.recibir_danio(
+            danio
+        )
+
+        return {
+            "nombre": "Flecha perforante",
+            "danio": danio_real
+        }
+
+    # ==========================================
+    # EVASIÓN
+    # ==========================================
+
+    def evasion(
+        self,
+        objetivo
+    ):
+        if self._evasion_activa:
+            return None
+
+        self._evasion_activa = True
+
+        return {
+            "nombre": "Evasión",
+            "danio": 0
+        }
+
+    # ==========================================
+    # RECIBIR DAÑO
+    # ==========================================
+
+    def recibir_danio(
+        self,
+        cantidad
+    ):
+        if self._evasion_activa:
+
+            # Solo sirve para el próximo ataque.
+            self._evasion_activa = False
+
+            # 80% de probabilidad de esquivarlo.
+            if random.random() < 0.80:
+                return 0
+
+        return super().recibir_danio(
+            cantidad
+        )
+
+    # ==========================================
+    # MÉTODO ABSTRACTO
+    # ==========================================
+
+    def usar_habilidad_especial(
+        self,
+        objetivo
+    ):
+        return self.disparo_critico(
+            objetivo
+        )
