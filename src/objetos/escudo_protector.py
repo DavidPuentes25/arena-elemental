@@ -1,23 +1,27 @@
-# Importa la clase base Objeto
 from src.objetos.objeto import Objeto
 
 
-# Escudo que protege del siguiente ataque
 class EscudoProtector(Objeto):
 
-    # Define las características del escudo
     def __init__(self):
+
         super().__init__(
             nombre="Escudo Protector",
-            descripcion="Reduce el daño del próximo ataque"
+            descripcion=(
+                "Reduce un 30% el daño recibido "
+                "durante 5 ataques enemigos"
+            )
         )
 
-    # Activa la protección
     def usar(self, personaje):
 
-        personaje.activar_escudo()
+        personaje.activar_escudo(
+            5
+        )
 
         return {
             "objeto": self.nombre,
-            "efecto": "Protección"
+            "efecto": "Protección",
+            "reduccion": 30,
+            "turnos": 5
         }

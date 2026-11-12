@@ -1,6 +1,5 @@
 from pathlib import Path
 from datetime import datetime
-
 import sqlite3
 
 
@@ -9,25 +8,21 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class RepositorioPartida:
 
-    def __init__(
-        self,
-        ruta_bd="arena_elemental.db"
-    ):
+    def __init__(self, ruta_bd="arena_elemental.db"):
         self.ruta_bd = ruta_bd
 
         self.conexion = sqlite3.connect(
             self.ruta_bd
         )
 
-        self.conexion.row_factory = (
-            sqlite3.Row
-        )
+        self.conexion.row_factory = sqlite3.Row
 
         self.conexion.execute(
             "PRAGMA foreign_keys = ON"
         )
 
         self._crear_esquema()
+        self._migrar_nivel_experiencia()
 
     # =====================================================
     # ESQUEMA
@@ -44,12 +39,47 @@ class RepositorioPartida:
             "r",
             encoding="utf-8"
         ) as archivo:
-
             script = archivo.read()
 
         self.conexion.executescript(
             script
         )
+
+        self.conexion.commit()
+
+    # =====================================================
+    # MIGRACIÓN NIVEL / EXPERIENCIA
+    # =====================================================
+
+    def _migrar_nivel_experiencia(self):
+        cursor = self.conexion.cursor()
+
+        cursor.execute(
+            "PRAGMA table_info(partidas)"
+        )
+
+        columnas = {
+            fila["name"]
+            for fila in cursor.fetchall()
+        }
+
+        if "nivel" not in columnas:
+            cursor.execute(
+                """
+                ALTER TABLE partidas
+                ADD COLUMN nivel INTEGER
+                NOT NULL DEFAULT 1
+                """
+            )
+
+        if "experiencia" not in columnas:
+            cursor.execute(
+                """
+                ALTER TABLE partidas
+                ADD COLUMN experiencia INTEGER
+                NOT NULL DEFAULT 0
+                """
+            )
 
         self.conexion.commit()
 
@@ -77,7 +107,9 @@ class RepositorioPartida:
         personaje,
         siguiente_enemigo,
         progreso,
-        inventario=None
+        inventario=None,
+        nivel=1,
+        experiencia=0
     ):
         nombre_partida = (
             nombre_partida.strip()
@@ -103,9 +135,11 @@ class RepositorioPartida:
                     personaje,
                     siguiente_enemigo,
                     progreso,
+                    nivel,
+                    experiencia,
                     fecha_guardado
                 )
-                VALUES (?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     nombre_partida,
@@ -113,6 +147,8 @@ class RepositorioPartida:
                     personaje,
                     siguiente_enemigo,
                     progreso,
+                    nivel,
+                    experiencia,
                     self._fecha_actual()
                 )
             )
@@ -131,13 +167,14 @@ class RepositorioPartida:
 
             return partida_id
 
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as error:
             self.conexion.rollback()
 
             raise ValueError(
-                "Ya existe una partida "
+                "No se pudo crear la partida. "
+                "Puede que ya exista una partida "
                 "con ese nombre."
-            )
+            ) from error
 
     # =====================================================
     # ACTUALIZAR PARTIDA
@@ -150,7 +187,9 @@ class RepositorioPartida:
         personaje,
         siguiente_enemigo,
         progreso,
-        inventario=None
+        inventario=None,
+        nivel=1,
+        experiencia=0
     ):
         if inventario is None:
             inventario = {}
@@ -166,6 +205,8 @@ class RepositorioPartida:
                 personaje = ?,
                 siguiente_enemigo = ?,
                 progreso = ?,
+                nivel = ?,
+                experiencia = ?,
                 fecha_guardado = ?
 
             WHERE id = ?
@@ -175,6 +216,8 @@ class RepositorioPartida:
                 personaje,
                 siguiente_enemigo,
                 progreso,
+                nivel,
+                experiencia,
                 self._fecha_actual(),
                 partida_id
             )
@@ -194,7 +237,7 @@ class RepositorioPartida:
         self.conexion.commit()
 
     # =====================================================
-    # INVENTARIO
+    # GUARDAR INVENTARIO
     # =====================================================
 
     def _guardar_inventario(
@@ -233,13 +276,15 @@ class RepositorioPartida:
                 )
             )
 
+    # =====================================================
+    # CARGAR INVENTARIO
+    # =====================================================
+
     def _cargar_inventario(
         self,
         partida_id
     ):
-        cursor = (
-            self.conexion.cursor()
-        )
+        cursor = self.conexion.cursor()
 
         cursor.execute(
             """
@@ -257,7 +302,6 @@ class RepositorioPartida:
         inventario = {}
 
         for fila in cursor.fetchall():
-
             inventario[
                 fila["objeto"]
             ] = fila["cantidad"]
@@ -272,9 +316,7 @@ class RepositorioPartida:
         self,
         partida_id
     ):
-        cursor = (
-            self.conexion.cursor()
-        )
+        cursor = self.conexion.cursor()
 
         cursor.execute(
             """
@@ -285,6 +327,8 @@ class RepositorioPartida:
                 personaje,
                 siguiente_enemigo,
                 progreso,
+                nivel,
+                experiencia,
                 fecha_guardado
 
             FROM partidas
@@ -317,6 +361,12 @@ class RepositorioPartida:
             "progreso":
                 fila["progreso"],
 
+            "nivel":
+                fila["nivel"],
+
+            "experiencia":
+                fila["experiencia"],
+
             "fecha_guardado":
                 fila["fecha_guardado"],
 
@@ -331,9 +381,7 @@ class RepositorioPartida:
     # =====================================================
 
     def listar_partidas(self):
-        cursor = (
-            self.conexion.cursor()
-        )
+        cursor = self.conexion.cursor()
 
         cursor.execute(
             """
@@ -344,22 +392,23 @@ class RepositorioPartida:
                 personaje,
                 siguiente_enemigo,
                 progreso,
+                nivel,
+                experiencia,
                 fecha_guardado
 
             FROM partidas
 
-            ORDER BY
-                fecha_guardado DESC
+            ORDER BY fecha_guardado DESC
             """
         )
 
         partidas = []
 
         for fila in cursor.fetchall():
-
             partidas.append(
                 {
-                    "id": fila["id"],
+                    "id":
+                        fila["id"],
 
                     "nombre_partida":
                         fila["nombre_partida"],
@@ -376,6 +425,12 @@ class RepositorioPartida:
                     "progreso":
                         fila["progreso"],
 
+                    "nivel":
+                        fila["nivel"],
+
+                    "experiencia":
+                        fila["experiencia"],
+
                     "fecha_guardado":
                         fila["fecha_guardado"]
                 }
@@ -384,13 +439,11 @@ class RepositorioPartida:
         return partidas
 
     # =====================================================
-    # EXISTENCIA
+    # EXISTEN PARTIDAS
     # =====================================================
 
     def existe_partida(self):
-        cursor = (
-            self.conexion.cursor()
-        )
+        cursor = self.conexion.cursor()
 
         cursor.execute(
             """
@@ -404,16 +457,14 @@ class RepositorioPartida:
         return fila["total"] > 0
 
     # =====================================================
-    # ELIMINAR
+    # ELIMINAR PARTIDA
     # =====================================================
 
     def eliminar(
         self,
         partida_id
     ):
-        cursor = (
-            self.conexion.cursor()
-        )
+        cursor = self.conexion.cursor()
 
         cursor.execute(
             """
@@ -426,7 +477,7 @@ class RepositorioPartida:
         self.conexion.commit()
 
     # =====================================================
-    # RENOMBRAR
+    # RENOMBRAR PARTIDA
     # =====================================================
 
     def renombrar(
@@ -464,7 +515,6 @@ class RepositorioPartida:
             return True
 
         except sqlite3.IntegrityError:
-
             self.conexion.rollback()
 
             return False

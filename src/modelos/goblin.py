@@ -9,7 +9,7 @@ class Goblin(Enemigo):
     def __init__(self):
         super().__init__(
             nombre="Goblin",
-            vida=100,
+            vida=200,
             ataque=23,
             defensa=9
         )

@@ -1,30 +1,55 @@
 import pygame
 
+# ============================================================
+# INTERFAZ
+# ============================================================
+
 from src.interfaz.pantalla_inicio import PantallaInicio
 from src.interfaz.pantalla_combate import PantallaCombate
+from src.interfaz.pantalla_resultado import PantallaResultado
+from src.interfaz.pantalla_recompensa import PantallaRecompensa
+from src.interfaz.pantalla_progreso import PantallaProgreso
+from src.interfaz.pantalla_nombre_partida import PantallaNombrePartida
+from src.interfaz.pantalla_cargar_partida import PantallaCargarPartida
+from src.interfaz.pantalla_seleccion_personaje import (
+    PantallaSeleccionPersonaje
+)
+
+# ============================================================
+# PERSONAJES
+# ============================================================
 
 from src.modelos.guerrero import Guerrero
 from src.modelos.mago import Mago
 from src.modelos.arquero import Arquero
 
+# ============================================================
+# ENEMIGOS
+# ============================================================
+
 from src.modelos.goblin import Goblin
 from src.modelos.orco import Orco
 from src.modelos.jefe_final import JefeFinal
-from src.objetos.escudo_protector import EscudoProtector
+
+# ============================================================
+# OBJETOS
+# ============================================================
+
 from src.objetos.pocion_vida import PocionVida
 from src.objetos.escudo_protector import EscudoProtector
-from src.interfaz.pantalla_resultado import PantallaResultado
+
+# ============================================================
+# BASE DE DATOS
+# ============================================================
+
 from src.persistencia.base_datos import RepositorioPartida
-from src.interfaz.pantalla_recompensa import PantallaRecompensa
-from src.interfaz.pantalla_progreso import PantallaProgreso
-from src.interfaz.pantalla_nombre_partida import PantallaNombrePartida
-from src.interfaz.pantalla_cargar_partida import PantallaCargarPartida
-from src.interfaz.pantalla_seleccion_personaje import (PantallaSeleccionPersonaje)
-# Crea el personaje según el guardado
-def crear_personaje(
-    tipo,
-    nombre
-):
+
+
+# ============================================================
+# CREAR PERSONAJE
+# ============================================================
+
+def crear_personaje(tipo, nombre):
 
     if tipo == "Guerrero":
         return Guerrero(nombre)
@@ -38,9 +63,14 @@ def crear_personaje(
     raise ValueError(
         f"Personaje desconocido: {tipo}"
     )
-def obtener_tipo_personaje(
-    jugador
-):
+
+
+# ============================================================
+# TIPO DE PERSONAJE
+# ============================================================
+
+def obtener_tipo_personaje(jugador):
+
     tipo = jugador.__class__.__name__
 
     if tipo not in (
@@ -53,45 +83,177 @@ def obtener_tipo_personaje(
         )
 
     return tipo
-# Crea el enemigo correspondiente
-def crear_enemigo(nombre):
 
-    if nombre == "Goblin":
-        return Goblin()
 
-    if nombre == "Orco":
-        return Orco()
+# ============================================================
+# PREPARAR JUGADOR PARA NUEVO COMBATE
+# ============================================================
 
-    if nombre == "Guardián Elemental":
-        return JefeFinal()
+def preparar_jugador_para_combate(jugador):
 
-    raise ValueError(
-        f"Enemigo desconocido: {nombre}"
+    # Vida completa
+    jugador._vida = jugador.vida_maxima
+
+    # Estados generales
+    if hasattr(jugador, "_defendiendo"):
+        jugador._defendiendo = False
+
+    if hasattr(jugador, "_turnos_escudo"):
+        jugador._turnos_escudo = 0
+
+    # Guerrero
+    if hasattr(jugador, "_turnos_grito"):
+        jugador._turnos_grito = 0
+
+    if hasattr(jugador, "_guardia_ferrea"):
+        jugador._guardia_ferrea = False
+
+    # Mago
+    if hasattr(jugador, "_congelacion_activa"):
+        jugador._congelacion_activa = False
+
+    # Arquero
+    if hasattr(jugador, "_evasion_activa"):
+        jugador._evasion_activa = False
+
+    # Reiniciar cooldowns
+    if hasattr(jugador, "habilidades"):
+
+        for habilidad in jugador.habilidades:
+
+            if hasattr(
+                habilidad,
+                "cooldown_actual"
+            ):
+                habilidad.cooldown_actual = 0
+
+            elif hasattr(
+                habilidad,
+                "_cooldown_actual"
+            ):
+                habilidad._cooldown_actual = 0
+
+
+# ============================================================
+# INVENTARIO -> DICCIONARIO
+# ============================================================
+
+def obtener_inventario_para_guardar(jugador):
+
+    inventario = {}
+
+    for objeto in jugador.inventario:
+
+        if objeto.nombre not in inventario:
+            inventario[objeto.nombre] = 0
+
+        inventario[objeto.nombre] += 1
+
+    return inventario
+
+
+# ============================================================
+# DICCIONARIO -> INVENTARIO
+# ============================================================
+
+def cargar_inventario(
+    jugador,
+    inventario
+):
+
+    for nombre_objeto, cantidad in inventario.items():
+
+        for _ in range(cantidad):
+
+            if nombre_objeto == "Poción de Vida":
+
+                jugador.agregar_objeto(
+                    PocionVida()
+                )
+
+            elif nombre_objeto == "Escudo Protector":
+
+                jugador.agregar_objeto(
+                    EscudoProtector()
+                )
+
+
+# ============================================================
+# COPIA TEMPORAL PARA REPETIR
+# ============================================================
+
+def crear_jugador_temporal(jugador):
+
+    tipo = obtener_tipo_personaje(
+        jugador
     )
 
-
-# Recupera los objetos almacenados
-def cargar_inventario(jugador, inventario):
-
-    cantidad_pociones = inventario.get(
-        "Poción de Vida",
-        0
+    temporal = crear_personaje(
+        tipo,
+        jugador.nombre
     )
 
-    cantidad_escudos = inventario.get(
-        "Escudo Protector",
-        0
+    temporal.restaurar_progreso(
+        nivel=jugador.nivel,
+        experiencia=jugador.experiencia
     )
 
-    for _ in range(cantidad_pociones):
-        jugador.agregar_objeto(
-            PocionVida()
+    inventario = (
+        obtener_inventario_para_guardar(
+            jugador
+        )
+    )
+
+    cargar_inventario(
+        temporal,
+        inventario
+    )
+
+    preparar_jugador_para_combate(
+        temporal
+    )
+
+    return temporal
+
+
+# ============================================================
+# EXPERIENCIA
+# ============================================================
+
+def entregar_experiencia(
+    jugador,
+    cantidad
+):
+
+    niveles = jugador.ganar_experiencia(
+        cantidad
+    )
+
+    print(
+        f"+{cantidad} XP | "
+        f"Nivel {jugador.nivel} | "
+        f"XP {jugador.experiencia}/"
+        f"{jugador.experiencia_siguiente_nivel}"
+    )
+
+    for subida in niveles:
+
+        print(
+            f"¡SUBISTE A NIVEL "
+            f"{subida['nivel']}!"
         )
 
-    for _ in range(cantidad_escudos):
-        jugador.agregar_objeto(
-            EscudoProtector()
+        print(
+            f"+{subida['vida']} VIDA | "
+            f"+{subida['ataque']} ATQ | "
+            f"+{subida['defensa']} DEF"
         )
+
+
+# ============================================================
+# GUARDAR PARTIDA
+# ============================================================
+
 def guardar_partida_desde_mapa(
     repo,
     partida_id,
@@ -100,13 +262,23 @@ def guardar_partida_desde_mapa(
     siguiente_enemigo,
     progreso
 ):
+
     inventario = (
         obtener_inventario_para_guardar(
             jugador
         )
     )
 
-    # Primera vez que se guarda
+    tipo_personaje = (
+        obtener_tipo_personaje(
+            jugador
+        )
+    )
+
+    # ========================================================
+    # PRIMER GUARDADO
+    # ========================================================
+
     if partida_id is None:
 
         nombre = (
@@ -114,50 +286,59 @@ def guardar_partida_desde_mapa(
             .ejecutar()
         )
 
-        # Canceló el guardado
         if nombre is None:
+
             return (
                 partida_id,
                 nombre_partida
             )
 
         try:
+
             partida_id = repo.crear_partida(
                 nombre_partida=nombre,
                 nombre_jugador=jugador.nombre,
-                personaje=obtener_tipo_personaje(jugador),
+                personaje=tipo_personaje,
                 siguiente_enemigo=siguiente_enemigo,
                 progreso=progreso,
-                inventario=inventario
+                inventario=inventario,
+                nivel=jugador.nivel,
+                experiencia=jugador.experiencia
             )
 
             nombre_partida = nombre
 
             print(
-                f"Partida guardada: "
+                f"Partida creada: "
                 f"{nombre_partida}"
             )
 
         except ValueError as error:
+
             print(
                 f"No se pudo guardar: "
                 f"{error}"
             )
 
-    # Ya existe: actualizar
+    # ========================================================
+    # ACTUALIZAR PARTIDA
+    # ========================================================
+
     else:
 
         repo.actualizar_partida(
             partida_id=partida_id,
             nombre_jugador=jugador.nombre,
-            personaje=obtener_tipo_personaje(jugador),
+            personaje=tipo_personaje,
             siguiente_enemigo=siguiente_enemigo,
             progreso=progreso,
-            inventario=inventario
+            inventario=inventario,
+            nivel=jugador.nivel,
+            experiencia=jugador.experiencia
         )
 
         print(
-            f"Progreso actualizado: "
+            f"Progreso guardado en: "
             f"{nombre_partida}"
         )
 
@@ -166,6 +347,116 @@ def guardar_partida_desde_mapa(
         nombre_partida
     )
 
+
+# ============================================================
+# REPETIR COMBATE
+# ============================================================
+
+def repetir_combate(
+    jugador,
+    enemigo_nombre
+):
+
+    jugador_temporal = (
+        crear_jugador_temporal(
+            jugador
+        )
+    )
+
+    # ========================================================
+    # CREAR ENEMIGO
+    # ========================================================
+
+    if enemigo_nombre == "Goblin":
+
+        enemigo = Goblin()
+        experiencia_ganada = 100
+
+    elif enemigo_nombre == "Orco":
+
+        enemigo = Orco()
+        experiencia_ganada = 200
+
+    elif enemigo_nombre == "Guardián Elemental":
+
+        enemigo = JefeFinal()
+        experiencia_ganada = 300
+
+    else:
+
+        print(
+            f"Enemigo desconocido: "
+            f"{enemigo_nombre}"
+        )
+
+        return "mapa"
+
+    # ========================================================
+    # COMBATE
+    # ========================================================
+
+    resultado = PantallaCombate(
+        jugador_temporal,
+        enemigo
+    ).ejecutar()
+
+    if resultado == "salir":
+        return "salir"
+
+    # ========================================================
+    # VICTORIA
+    # ========================================================
+
+    if resultado == "victoria":
+
+        accion = PantallaResultado(
+            "victoria"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        # ====================================================
+        # DAR XP AL JUGADOR REAL
+        # ====================================================
+
+        entregar_experiencia(
+            jugador,
+            experiencia_ganada
+        )
+
+        print(
+            f"Entrenamiento completado: "
+            f"+{experiencia_ganada} XP"
+        )
+
+        # No recompensa
+        # No cambia progreso
+        return "mapa"
+
+    # ========================================================
+    # DERROTA
+    # ========================================================
+
+    if resultado == "derrota":
+
+        accion = PantallaResultado(
+            "derrota"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        # No XP si pierde
+        # No elimina partida
+        return "mapa"
+
+    return "mapa"
+
+
+# ============================================================
+# MAPA DE PROGRESO
+# ============================================================
 
 def ejecutar_mapa(
     repo,
@@ -176,6 +467,7 @@ def ejecutar_mapa(
     partida_id=None,
     nombre_partida=None
 ):
+
     while True:
 
         accion = PantallaProgreso(
@@ -185,31 +477,34 @@ def ejecutar_mapa(
             )
         ).ejecutar()
 
-        # Volver al menú principal
         if accion == "menu":
+
             return (
                 "menu",
                 partida_id,
                 nombre_partida
             )
 
-        # Cerrar completamente el juego
         if accion == "salir":
+
             return (
                 "salir",
                 partida_id,
                 nombre_partida
             )
 
-        # Continuar hacia el combate
         if accion == "continuar":
+
             return (
                 "continuar",
                 partida_id,
                 nombre_partida
             )
 
-        # Guardar partida o progreso
+        # ====================================================
+        # GUARDAR
+        # ====================================================
+
         if accion == "guardar":
 
             (
@@ -223,8 +518,54 @@ def ejecutar_mapa(
                 siguiente_enemigo=siguiente_enemigo,
                 progreso=progreso
             )
+
+            continue
+
+        # ====================================================
+        # REPETIR GOBLIN
+        # ====================================================
+
+        if accion == "repetir_goblin":
+
+            resultado = repetir_combate(
+                jugador,
+                "Goblin"
+            )
+
+            if resultado == "salir":
+
+                return (
+                    "salir",
+                    partida_id,
+                    nombre_partida
+                )
+
+            continue
+
+        # ====================================================
+        # REPETIR ORCO
+        # ====================================================
+
+        if accion == "repetir_orco":
+
+            resultado = repetir_combate(
+                jugador,
+                "Orco"
+            )
+
+            if resultado == "salir":
+
+                return (
+                    "salir",
+                    partida_id,
+                    nombre_partida
+                )
+
+            continue
+
+
 # ============================================================
-# COMBATE CONTRA GOBLIN
+# GOBLIN
 # ============================================================
 
 def combatir_goblin(
@@ -233,6 +574,11 @@ def combatir_goblin(
     partida_id=None,
     nombre_partida=None
 ):
+
+    preparar_jugador_para_combate(
+        jugador
+    )
+
     enemigo = Goblin()
 
     resultado = PantallaCombate(
@@ -240,16 +586,12 @@ def combatir_goblin(
         enemigo
     ).ejecutar()
 
-    # ==========================================
-    # CERRAR JUEGO
-    # ==========================================
-
     if resultado == "salir":
         return "salir"
 
-    # ==========================================
+    # ========================================================
     # DERROTA
-    # ==========================================
+    # ========================================================
 
     if resultado == "derrota":
 
@@ -267,9 +609,9 @@ def combatir_goblin(
 
         return "menu"
 
-    # ==========================================
+    # ========================================================
     # VICTORIA
-    # ==========================================
+    # ========================================================
 
     if resultado == "victoria":
 
@@ -283,142 +625,15 @@ def combatir_goblin(
         if accion == "menu":
             return "menu"
 
-        # ======================================
-        # RECOMPENSA
-        # ======================================
-
-        recompensa = PantallaRecompensa(
-        ).ejecutar()
-
-        if recompensa == "salir":
-            return "salir"
-
-        if recompensa == "pocion":
-
-            jugador.agregar_objeto(
-                PocionVida()
-            )
-
-        elif recompensa == "escudo":
-
-            jugador.agregar_objeto(
-                EscudoProtector()
-            )
-
-        # ======================================
-        # MAPA DESPUÉS DEL GOBLIN
-        # ======================================
-
-        (
-            accion_mapa,
-            partida_id,
-            nombre_partida
-        ) = ejecutar_mapa(
-            repo=repo,
-            estado="goblin",
-            jugador=jugador,
-            siguiente_enemigo="Orco",
-            progreso=1,
-            partida_id=partida_id,
-            nombre_partida=nombre_partida
+        # XP
+        entregar_experiencia(
+            jugador,
+            100
         )
 
-        # --------------------------------------
-        # VOLVER AL MENÚ
-        # --------------------------------------
-
-        if accion_mapa == "menu":
-            return "menu"
-
-        # --------------------------------------
-        # CERRAR JUEGO
-        # --------------------------------------
-
-        if accion_mapa == "salir":
-            return "salir"
-
-        # --------------------------------------
-        # SOLO SI PULSA ENFRENTAR ORCO
-        # --------------------------------------
-
-        if accion_mapa == "continuar":
-
-            return combatir_orco(
-                repo=repo,
-                jugador=jugador,
-                partida_id=partida_id,
-                nombre_partida=nombre_partida
-            )
-
-    return "menu"
-
-# ============================================================
-# COMBATE CONTRA ORCO
-# ============================================================
-
-def combatir_orco(
-    repo,
-    jugador,
-    partida_id=None,
-    nombre_partida=None
-):
-    enemigo = Orco()
-
-    resultado = PantallaCombate(
-        jugador,
-        enemigo
-    ).ejecutar()
-
-    # ==========================================
-    # CERRAR JUEGO
-    # ==========================================
-
-    if resultado == "salir":
-        return "salir"
-
-    # ==========================================
-    # DERROTA
-    # ==========================================
-
-    if resultado == "derrota":
-
-        if partida_id is not None:
-            repo.eliminar(
-                partida_id
-            )
-
-        accion = PantallaResultado(
-            "derrota"
-        ).ejecutar()
-
-        if accion == "salir":
-            return "salir"
-
-        return "menu"
-
-    # ==========================================
-    # VICTORIA
-    # ==========================================
-
-    if resultado == "victoria":
-
-        # --------------------------------------
-        # PANTALLA DE VICTORIA
-        # --------------------------------------
-
-        accion = PantallaResultado(
-            "victoria"
-        ).ejecutar()
-
-        if accion == "salir":
-            return "salir"
-
-        if accion == "menu":
-            return "menu"
-
-        # --------------------------------------
+        # ====================================================
         # RECOMPENSA
-        # --------------------------------------
+        # ====================================================
 
         recompensa = (
             PantallaRecompensa()
@@ -440,10 +655,137 @@ def combatir_orco(
                 EscudoProtector()
             )
 
-        # --------------------------------------
-        # MAPA:
-        # GOBLIN Y ORCO DERROTADOS
-        # --------------------------------------
+        # ====================================================
+        # MAPA
+        # ====================================================
+
+        (
+            accion_mapa,
+            partida_id,
+            nombre_partida
+        ) = ejecutar_mapa(
+            repo=repo,
+            estado="goblin",
+            jugador=jugador,
+            siguiente_enemigo="Orco",
+            progreso=1,
+            partida_id=partida_id,
+            nombre_partida=nombre_partida
+        )
+
+        if accion_mapa == "menu":
+            return "menu"
+
+        if accion_mapa == "salir":
+            return "salir"
+
+        if accion_mapa == "continuar":
+
+            return combatir_orco(
+                repo=repo,
+                jugador=jugador,
+                partida_id=partida_id,
+                nombre_partida=nombre_partida
+            )
+
+    return "menu"
+
+
+# ============================================================
+# ORCO
+# ============================================================
+
+def combatir_orco(
+    repo,
+    jugador,
+    partida_id=None,
+    nombre_partida=None
+):
+
+    preparar_jugador_para_combate(
+        jugador
+    )
+
+    enemigo = Orco()
+
+    resultado = PantallaCombate(
+        jugador,
+        enemigo
+    ).ejecutar()
+
+    if resultado == "salir":
+        return "salir"
+
+    # ========================================================
+    # DERROTA
+    # ========================================================
+
+    if resultado == "derrota":
+
+        if partida_id is not None:
+
+            repo.eliminar(
+                partida_id
+            )
+
+        accion = PantallaResultado(
+            "derrota"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        return "menu"
+
+    # ========================================================
+    # VICTORIA
+    # ========================================================
+
+    if resultado == "victoria":
+
+        accion = PantallaResultado(
+            "victoria"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        if accion == "menu":
+            return "menu"
+
+        # XP
+        entregar_experiencia(
+            jugador,
+            200
+        )
+
+        # ====================================================
+        # RECOMPENSA
+        # ====================================================
+
+        recompensa = (
+            PantallaRecompensa()
+            .ejecutar()
+        )
+
+        if recompensa == "salir":
+            return "salir"
+
+        if recompensa == "pocion":
+
+            jugador.agregar_objeto(
+                PocionVida()
+            )
+
+        elif recompensa == "escudo":
+
+            jugador.agregar_objeto(
+                EscudoProtector()
+            )
+
+        # ====================================================
+        # MAPA POST-ORCO
+        # ====================================================
 
         (
             accion_mapa,
@@ -453,33 +795,27 @@ def combatir_orco(
             repo=repo,
             estado="orco",
             jugador=jugador,
-            siguiente_enemigo="Guardián Elemental",
+            siguiente_enemigo=(
+                "Guardián Elemental"
+            ),
             progreso=2,
             partida_id=partida_id,
             nombre_partida=nombre_partida
         )
 
-        # --------------------------------------
-        # VOLVER AL INICIO
-        # --------------------------------------
-
         if accion_mapa == "menu":
             return "menu"
-
-        # --------------------------------------
-        # CERRAR
-        # --------------------------------------
 
         if accion_mapa == "salir":
             return "salir"
 
-        # --------------------------------------
-        # GUARDIÁN
-        # --------------------------------------
+        # ====================================================
+        # BATALLA FINAL
+        # ====================================================
 
         if accion_mapa == "continuar":
 
-            return combatir_guardian(
+            return combatir_jefe_final(
                 repo=repo,
                 jugador=jugador,
                 partida_id=partida_id,
@@ -487,12 +823,120 @@ def combatir_orco(
             )
 
     return "menu"
-# Crea una partida nueva
-def iniciar_nueva_partida(repo):
 
-    # ==========================================
-    # SELECCIONAR PERSONAJE
-    # ==========================================
+
+# ============================================================
+# JEFE FINAL
+# ============================================================
+
+def combatir_jefe_final(
+    repo,
+    jugador,
+    partida_id=None,
+    nombre_partida=None
+):
+
+    preparar_jugador_para_combate(
+        jugador
+    )
+
+    enemigo = JefeFinal()
+
+    resultado = PantallaCombate(
+        jugador,
+        enemigo
+    ).ejecutar()
+
+    if resultado == "salir":
+        return "salir"
+
+    # ========================================================
+    # DERROTA
+    # ========================================================
+
+    if resultado == "derrota":
+
+        if partida_id is not None:
+
+            repo.eliminar(
+                partida_id
+            )
+
+        accion = PantallaResultado(
+            "derrota"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        return "menu"
+
+    # ========================================================
+    # VICTORIA FINAL
+    # ========================================================
+
+    if resultado == "victoria":
+
+        # XP FINAL
+        entregar_experiencia(
+            jugador,
+            300
+        )
+
+        accion = PantallaResultado(
+            "victoria"
+        ).ejecutar()
+
+        if accion == "salir":
+            return "salir"
+
+        # ====================================================
+        # GUARDAR PROGRESO FINAL
+        # ====================================================
+
+        if partida_id is not None:
+
+            try:
+
+                repo.actualizar_partida(
+                    partida_id=partida_id,
+                    nombre_jugador=jugador.nombre,
+                    personaje=(
+                        obtener_tipo_personaje(
+                            jugador
+                        )
+                    ),
+                    siguiente_enemigo=(
+                        "Guardián Elemental"
+                    ),
+                    progreso=3,
+                    inventario=(
+                        obtener_inventario_para_guardar(
+                            jugador
+                        )
+                    ),
+                    nivel=jugador.nivel,
+                    experiencia=jugador.experiencia
+                )
+
+            except ValueError:
+                pass
+
+        print(
+            "¡Has completado "
+            "Arena Elemental!"
+        )
+
+        return "menu"
+
+    return "menu"
+
+
+# ============================================================
+# NUEVA PARTIDA
+# ============================================================
+
+def iniciar_nueva_partida(repo):
 
     seleccion = (
         PantallaSeleccionPersonaje()
@@ -505,10 +949,6 @@ def iniciar_nueva_partida(repo):
     if seleccion == "menu":
         return "menu"
 
-    # ==========================================
-    # CREAR PERSONAJE
-    # ==========================================
-
     jugador = crear_personaje(
         seleccion,
         "Ares"
@@ -517,9 +957,9 @@ def iniciar_nueva_partida(repo):
     partida_id = None
     nombre_partida = None
 
-    # ==========================================
+    # ========================================================
     # MAPA INICIAL
-    # ==========================================
+    # ========================================================
 
     (
         accion,
@@ -551,18 +991,26 @@ def iniciar_nueva_partida(repo):
         )
 
     return "menu"
-def continuar_partida(repo):
 
-    # ==========================================
-    # SELECCIÓN / ELIMINACIÓN
-    # ==========================================
+
+# ============================================================
+# CARGAR PARTIDA
+# ============================================================
+
+def continuar_partida(repo):
 
     while True:
 
-        partidas = repo.listar_partidas()
+        partidas = (
+            repo.listar_partidas()
+        )
 
         if not partidas:
-            print("No hay partidas guardadas.")
+
+            print(
+                "No hay partidas guardadas."
+            )
+
             return "menu"
 
         (
@@ -572,51 +1020,52 @@ def continuar_partida(repo):
             partidas
         ).ejecutar()
 
-        # Cerrar juego
         if accion_partida == "salir":
             return "salir"
 
-        # Volver al menú
         if accion_partida == "volver":
             return "menu"
 
-        # Eliminar partida
         if accion_partida == "eliminar":
 
             repo.eliminar(
                 partida_id
             )
 
-            print(
-                f"Partida {partida_id} eliminada."
-            )
-
-            # Vuelve a cargar la lista
             continue
 
-        # Cargar partida
         if accion_partida == "cargar":
             break
 
-    # ==========================================
-    # CARGAR DATOS
-    # ==========================================
+    # ========================================================
+    # DATOS
+    # ========================================================
 
     datos = repo.cargar(
         partida_id
     )
 
     if datos is None:
-        print("No se pudo cargar la partida.")
+
+        print(
+            "No se pudo cargar "
+            "la partida."
+        )
+
         return "menu"
 
-    # ==========================================
-    # RECONSTRUIR JUGADOR
-    # ==========================================
+    # ========================================================
+    # PERSONAJE
+    # ========================================================
 
     jugador = crear_personaje(
         datos["personaje"],
         datos["nombre_jugador"]
+    )
+
+    jugador.restaurar_progreso(
+        nivel=datos["nivel"],
+        experiencia=datos["experiencia"]
     )
 
     cargar_inventario(
@@ -624,34 +1073,49 @@ def continuar_partida(repo):
         datos["inventario"]
     )
 
-    nombre_partida = datos[
-        "nombre_partida"
-    ]
+    nombre_partida = (
+        datos["nombre_partida"]
+    )
 
-    siguiente_enemigo = datos[
-        "siguiente_enemigo"
-    ]
+    siguiente_enemigo = (
+        datos["siguiente_enemigo"]
+    )
 
-    progreso = datos[
-        "progreso"
-    ]
+    progreso = (
+        datos["progreso"]
+    )
 
-    # ==========================================
-    # MAPA
-    # ==========================================
+    # ========================================================
+    # MAPA CORRESPONDIENTE
+    # ========================================================
 
     if siguiente_enemigo == "Goblin":
+
         estado_mapa = "inicio"
 
     elif siguiente_enemigo == "Orco":
+
         estado_mapa = "goblin"
 
+    elif (
+        siguiente_enemigo
+        == "Guardián Elemental"
+    ):
+
+        estado_mapa = "orco"
+
     else:
+
         print(
-            "Ese punto del juego todavía "
-            "no está implementado."
+            "Progreso desconocido: "
+            f"{siguiente_enemigo}"
         )
+
         return "menu"
+
+    # ========================================================
+    # MOSTRAR MAPA
+    # ========================================================
 
     (
         accion,
@@ -667,23 +1131,15 @@ def continuar_partida(repo):
         nombre_partida=nombre_partida
     )
 
-    # ==========================================
-    # VOLVER AL INICIO
-    # ==========================================
-
     if accion == "menu":
         return "menu"
-
-    # ==========================================
-    # CERRAR
-    # ==========================================
 
     if accion == "salir":
         return "salir"
 
-    # ==========================================
-    # COMBATE
-    # ==========================================
+    # ========================================================
+    # CONTINUAR
+    # ========================================================
 
     if accion == "continuar":
 
@@ -705,30 +1161,28 @@ def continuar_partida(repo):
                 nombre_partida=nombre_partida
             )
 
-        if siguiente_enemigo == "Guardián Elemental":
+        if (
+            siguiente_enemigo
+            == "Guardián Elemental"
+        ):
 
-           return combatir_guardian(
-             repo=repo,
-             jugador=jugador,
-             partida_id=partida_id,
-             nombre_partida=nombre_partida
+            return combatir_jefe_final(
+                repo=repo,
+                jugador=jugador,
+                partida_id=partida_id,
+                nombre_partida=nombre_partida
             )
 
     return "menu"
-def obtener_inventario_para_guardar(jugador):
-    inventario = {}
 
-    for objeto in jugador.inventario:
 
-        if objeto.nombre not in inventario:
-            inventario[objeto.nombre] = 0
-
-        inventario[objeto.nombre] += 1
-
-    return inventario
-
+# ============================================================
+# MAIN
+# ============================================================
 
 def main():
+
+    pygame.init()
 
     repo = RepositorioPartida()
 
@@ -736,34 +1190,63 @@ def main():
 
         while True:
 
-            # Comprueba si hay guardado
-            hay_partida = repo.existe_partida()
-
-            menu = PantallaInicio(
-                partida_disponible=hay_partida
+            hay_partidas = (
+                repo.existe_partida()
             )
 
-            opcion = menu.ejecutar()
+            opcion = PantallaInicio(
+                partida_disponible=hay_partidas
+            ).ejecutar()
+
+            # =================================================
+            # NUEVA PARTIDA
+            # =================================================
 
             if opcion == "jugar":
-                accion = iniciar_nueva_partida(repo)
 
-                if accion == "salir":
-                   break
+                accion = (
+                    iniciar_nueva_partida(
+                        repo
+                    )
+                )
+
+            # =================================================
+            # CARGAR
+            # =================================================
 
             elif opcion == "cargar":
-                accion = continuar_partida(repo)
 
-                if accion == "salir":
-                 break
+                accion = (
+                    continuar_partida(
+                        repo
+                    )
+                )
+
+            # =================================================
+            # SALIR
+            # =================================================
 
             elif opcion == "salir":
+
+                break
+
+            else:
+
+                continue
+
+            if accion == "salir":
                 break
 
     finally:
+
         repo.cerrar()
+
         pygame.quit()
 
+
+# ============================================================
+# INICIO
+# ============================================================
 
 if __name__ == "__main__":
     main()

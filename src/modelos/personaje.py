@@ -3,21 +3,45 @@ from abc import ABC, abstractmethod
 
 class Personaje(ABC):
 
-    def __init__(self, nombre: str, vida: int, ataque: int, defensa: int):
+    def __init__(
+        self,
+        nombre,
+        vida,
+        ataque,
+        defensa
+    ):
         self._nombre = nombre
+
         self._vida_maxima = vida
         self._vida = vida
+
         self._ataque = ataque
         self._defensa = defensa
 
-        # Defensa normal
+        # ==========================================
+        # NIVEL Y EXPERIENCIA
+        # ==========================================
+
+        self._nivel = 1
+        self._experiencia = 0
+
+        # ==========================================
+        # ESTADOS DE COMBATE
+        # ==========================================
+
         self._defendiendo = False
 
-        # Escudo protector
         self._turnos_escudo = 0
 
-        # Inventario
+        # ==========================================
+        # INVENTARIO
+        # ==========================================
+
         self._inventario = []
+
+    # =====================================================
+    # PROPIEDADES
+    # =====================================================
 
     @property
     def nombre(self):
@@ -55,10 +79,162 @@ class Personaje(ABC):
     def esta_vivo(self):
         return self._vida > 0
 
-    # Recibe daño y aplica las protecciones activas
-    def recibir_danio(self, cantidad: int):
+    # =====================================================
+    # NIVEL Y EXPERIENCIA
+    # =====================================================
 
-        # Escudo: reduce 30% durante 5 ataques
+    @property
+    def nivel(self):
+        return self._nivel
+
+    @property
+    def experiencia(self):
+        return self._experiencia
+
+    @property
+    def experiencia_siguiente_nivel(self):
+        return self._nivel * 100
+
+    def obtener_mejoras_nivel(self):
+        """
+        Estadísticas que obtiene cada clase
+        cuando sube de nivel.
+        """
+
+        tipo = self.__class__.__name__
+
+        if tipo == "Guerrero":
+            return {
+                "vida": 20,
+                "ataque": 4,
+                "defensa": 3
+            }
+
+        if tipo == "Mago":
+            return {
+                "vida": 15,
+                "ataque": 5,
+                "defensa": 2
+            }
+
+        if tipo == "Arquero":
+            return {
+                "vida": 15,
+                "ataque": 4,
+                "defensa": 2
+            }
+
+        return {
+            "vida": 10,
+            "ataque": 3,
+            "defensa": 2
+        }
+
+    def ganar_experiencia(
+        self,
+        cantidad
+    ):
+        if cantidad <= 0:
+            return []
+
+        self._experiencia += cantidad
+
+        niveles_subidos = []
+
+        while (
+            self._experiencia
+            >= self.experiencia_siguiente_nivel
+        ):
+
+            experiencia_necesaria = (
+                self.experiencia_siguiente_nivel
+            )
+
+            self._experiencia -= (
+                experiencia_necesaria
+            )
+
+            resultado = (
+                self.subir_nivel()
+            )
+
+            niveles_subidos.append(
+                resultado
+            )
+
+        return niveles_subidos
+
+    def subir_nivel(self):
+
+        self._nivel += 1
+
+        mejoras = (
+            self.obtener_mejoras_nivel()
+        )
+
+        self._vida_maxima += (
+            mejoras["vida"]
+        )
+
+        self._ataque += (
+            mejoras["ataque"]
+        )
+
+        self._defensa += (
+            mejoras["defensa"]
+        )
+
+        # Subir de nivel recupera la vida completa.
+        self._vida = (
+            self._vida_maxima
+        )
+
+        return {
+            "nivel": self._nivel,
+            "vida": mejoras["vida"],
+            "ataque": mejoras["ataque"],
+            "defensa": mejoras["defensa"]
+        }
+
+    def restaurar_progreso(
+        self,
+        nivel,
+        experiencia
+    ):
+        """
+        Reconstruye las estadísticas cuando
+        cargamos una partida guardada.
+        """
+
+        nivel = max(
+            1,
+            int(nivel)
+        )
+
+        experiencia = max(
+            0,
+            int(experiencia)
+        )
+
+        while self._nivel < nivel:
+            self.subir_nivel()
+
+        self._experiencia = (
+            experiencia
+        )
+
+        self._vida = (
+            self._vida_maxima
+        )
+
+    # =====================================================
+    # COMBATE
+    # =====================================================
+
+    def recibir_danio(
+        self,
+        cantidad
+    ):
         if self._turnos_escudo > 0:
 
             cantidad = max(
@@ -68,7 +244,6 @@ class Personaje(ABC):
 
             self._turnos_escudo -= 1
 
-        # Defender: reduce 50% un solo ataque
         if self._defendiendo:
 
             cantidad = max(
@@ -85,56 +260,69 @@ class Personaje(ABC):
 
         return cantidad
 
-    # Activa defensa para el próximo ataque
     def defenderse(self):
         self._defendiendo = True
 
-    # Recupera vida sin superar la vida máxima
-    def curar(self, cantidad: int):
-
+    def curar(
+        self,
+        cantidad
+    ):
         self._vida = min(
             self._vida_maxima,
             self._vida + cantidad
         )
 
-    # Calcula daño normal
-    def calcular_danio(self, objetivo):
+    def restaurar_vida(self):
+        self._vida = self._vida_maxima
 
+    def calcular_danio(
+        self,
+        objetivo
+    ):
         return max(
             1,
             self._ataque - objetivo.defensa
         )
 
-    # Ataque normal
-    def atacar(self, objetivo):
-
+    def atacar(
+        self,
+        objetivo
+    ):
         danio = self.calcular_danio(
             objetivo
         )
 
-        danio_real = objetivo.recibir_danio(
+        return objetivo.recibir_danio(
             danio
         )
 
-        return danio_real
+    # =====================================================
+    # INVENTARIO
+    # =====================================================
 
-    # Agrega objeto al inventario
-    def agregar_objeto(self, objeto):
-
+    def agregar_objeto(
+        self,
+        objeto
+    ):
         self._inventario.append(
             objeto
         )
 
-    # Usa un objeto del inventario
-    def usar_objeto(self, indice: int):
-
+    def usar_objeto(
+        self,
+        indice
+    ):
         if (
             indice < 0
-            or indice >= len(self._inventario)
+            or indice >= len(
+                self._inventario
+            )
         ):
             return None
 
-        objeto = self._inventario[indice]
+        objeto = self._inventario[
+            indice
+        ]
 
         resultado = objeto.usar(
             self
@@ -146,11 +334,21 @@ class Personaje(ABC):
 
         return resultado
 
-    # Activa el Escudo Protector
-    def activar_escudo(self, turnos=5):
+    def activar_escudo(
+        self,
+        turnos=5
+    ):
+        self._turnos_escudo = (
+            turnos
+        )
 
-        self._turnos_escudo = turnos
+    # =====================================================
+    # MÉTODO ABSTRACTO
+    # =====================================================
 
     @abstractmethod
-    def usar_habilidad_especial(self, objetivo):
+    def usar_habilidad_especial(
+        self,
+        objetivo
+    ):
         pass
