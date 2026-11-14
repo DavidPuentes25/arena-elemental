@@ -12,9 +12,9 @@ class JefeFinal(Enemigo):
     def __init__(self):
         super().__init__(
             nombre="Guardián Elemental",
-            vida=1600,
-            ataque=40,
-            defensa=15
+            vida=380,
+            ataque=31,
+            defensa=17
         )
 
     # Polimorfismo: comportamiento especial del jefe

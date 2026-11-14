@@ -9,7 +9,7 @@ class Arquero(Personaje):
     def __init__(self, nombre: str):
         super().__init__(
             nombre=nombre,
-            vida=100,
+            vida=140,
             ataque=27,
             defensa=10
         )

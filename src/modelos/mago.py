@@ -7,7 +7,7 @@ class Mago(Personaje):
     def __init__(self, nombre: str):
         super().__init__(
             nombre=nombre,
-            vida=400,
+            vida=125,
             ataque=30,
             defensa=8
         )

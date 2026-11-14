@@ -105,21 +105,21 @@ class Personaje(ABC):
 
         if tipo == "Guerrero":
             return {
-                "vida": 20,
+                "vida": 22,
                 "ataque": 4,
                 "defensa": 3
             }
 
         if tipo == "Mago":
             return {
-                "vida": 15,
+                "vida": 18,
                 "ataque": 5,
                 "defensa": 2
             }
 
         if tipo == "Arquero":
             return {
-                "vida": 15,
+                "vida": 20,
                 "ataque": 4,
                 "defensa": 2
             }

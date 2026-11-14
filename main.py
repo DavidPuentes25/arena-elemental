@@ -14,6 +14,9 @@ from src.interfaz.pantalla_cargar_partida import PantallaCargarPartida
 from src.interfaz.pantalla_seleccion_personaje import (
     PantallaSeleccionPersonaje
 )
+from src.interfaz.pantalla_victoria_final import (
+    PantallaVictoriaFinal
+)
 
 # ============================================================
 # PERSONAJES
@@ -471,10 +474,11 @@ def ejecutar_mapa(
     while True:
 
         accion = PantallaProgreso(
-            estado,
-            partida_guardada=(
-                partida_id is not None
-            )
+           estado,
+           jugador,
+           partida_guardada=(
+          partida_id is not None
+        )
         ).ejecutar()
 
         if accion == "menu":
@@ -702,6 +706,10 @@ def combatir_orco(
     nombre_partida=None
 ):
 
+    # ========================================================
+    # PREPARAR JUGADOR
+    # ========================================================
+
     preparar_jugador_para_combate(
         jugador
     )
@@ -713,6 +721,10 @@ def combatir_orco(
         enemigo
     ).ejecutar()
 
+    # ========================================================
+    # CERRAR JUEGO
+    # ========================================================
+
     if resultado == "salir":
         return "salir"
 
@@ -722,18 +734,47 @@ def combatir_orco(
 
     if resultado == "derrota":
 
-        if partida_id is not None:
-
-            repo.eliminar(
-                partida_id
-            )
-
-        accion = PantallaResultado(
+        accion_resultado = PantallaResultado(
             "derrota"
         ).ejecutar()
 
-        if accion == "salir":
+        if accion_resultado == "salir":
             return "salir"
+
+        # ----------------------------------------------------
+        # NO SE BORRA LA PARTIDA
+        # NO SE PIERDE XP
+        # NO SE PIERDE NIVEL
+        # ----------------------------------------------------
+
+        (
+            accion_mapa,
+            partida_id,
+            nombre_partida
+        ) = ejecutar_mapa(
+            repo=repo,
+            estado="goblin",
+            jugador=jugador,
+            siguiente_enemigo="Orco",
+            progreso=1,
+            partida_id=partida_id,
+            nombre_partida=nombre_partida
+        )
+
+        if accion_mapa == "salir":
+            return "salir"
+
+        if accion_mapa == "menu":
+            return "menu"
+
+        if accion_mapa == "continuar":
+
+            return combatir_orco(
+                repo=repo,
+                jugador=jugador,
+                partida_id=partida_id,
+                nombre_partida=nombre_partida
+            )
 
         return "menu"
 
@@ -743,17 +784,20 @@ def combatir_orco(
 
     if resultado == "victoria":
 
-        accion = PantallaResultado(
+        accion_resultado = PantallaResultado(
             "victoria"
         ).ejecutar()
 
-        if accion == "salir":
+        if accion_resultado == "salir":
             return "salir"
 
-        if accion == "menu":
+        if accion_resultado == "menu":
             return "menu"
 
-        # XP
+        # ====================================================
+        # EXPERIENCIA
+        # ====================================================
+
         entregar_experiencia(
             jugador,
             200
@@ -763,10 +807,7 @@ def combatir_orco(
         # RECOMPENSA
         # ====================================================
 
-        recompensa = (
-            PantallaRecompensa()
-            .ejecutar()
-        )
+        recompensa = PantallaRecompensa().ejecutar()
 
         if recompensa == "salir":
             return "salir"
@@ -784,7 +825,7 @@ def combatir_orco(
             )
 
         # ====================================================
-        # MAPA POST-ORCO
+        # MAPA DESPUÉS DEL ORCO
         # ====================================================
 
         (
@@ -795,22 +836,20 @@ def combatir_orco(
             repo=repo,
             estado="orco",
             jugador=jugador,
-            siguiente_enemigo=(
-                "Guardián Elemental"
-            ),
+            siguiente_enemigo="Guardián Elemental",
             progreso=2,
             partida_id=partida_id,
             nombre_partida=nombre_partida
         )
 
-        if accion_mapa == "menu":
-            return "menu"
-
         if accion_mapa == "salir":
             return "salir"
 
+        if accion_mapa == "menu":
+            return "menu"
+
         # ====================================================
-        # BATALLA FINAL
+        # JEFE FINAL
         # ====================================================
 
         if accion_mapa == "continuar":
@@ -822,8 +861,13 @@ def combatir_orco(
                 nombre_partida=nombre_partida
             )
 
-    return "menu"
+        return "menu"
 
+    # ========================================================
+    # SEGURIDAD
+    # ========================================================
+
+    return "menu"
 
 # ============================================================
 # JEFE FINAL
@@ -835,6 +879,9 @@ def combatir_jefe_final(
     partida_id=None,
     nombre_partida=None
 ):
+    # ========================================================
+    # PREPARAR JUGADOR
+    # ========================================================
 
     preparar_jugador_para_combate(
         jugador
@@ -842,10 +889,18 @@ def combatir_jefe_final(
 
     enemigo = JefeFinal()
 
+    # ========================================================
+    # COMBATE FINAL
+    # ========================================================
+
     resultado = PantallaCombate(
         jugador,
         enemigo
     ).ejecutar()
+
+    # ========================================================
+    # SALIR
+    # ========================================================
 
     if resultado == "salir":
         return "salir"
@@ -856,18 +911,42 @@ def combatir_jefe_final(
 
     if resultado == "derrota":
 
-        if partida_id is not None:
-
-            repo.eliminar(
-                partida_id
-            )
-
-        accion = PantallaResultado(
+        accion_resultado = PantallaResultado(
             "derrota"
         ).ejecutar()
 
-        if accion == "salir":
+        if accion_resultado == "salir":
             return "salir"
+
+        # Volvemos al mapa después del Orco.
+        (
+            accion_mapa,
+            partida_id,
+            nombre_partida
+        ) = ejecutar_mapa(
+            repo=repo,
+            estado="orco",
+            jugador=jugador,
+            siguiente_enemigo="Guardián Elemental",
+            progreso=2,
+            partida_id=partida_id,
+            nombre_partida=nombre_partida
+        )
+
+        if accion_mapa == "salir":
+            return "salir"
+
+        if accion_mapa == "menu":
+            return "menu"
+
+        if accion_mapa == "continuar":
+
+            return combatir_jefe_final(
+                repo=repo,
+                jugador=jugador,
+                partida_id=partida_id,
+                nombre_partida=nombre_partida
+            )
 
         return "menu"
 
@@ -877,22 +956,18 @@ def combatir_jefe_final(
 
     if resultado == "victoria":
 
-        # XP FINAL
+        # ----------------------------------------------------
+        # EXPERIENCIA
+        # ----------------------------------------------------
+
         entregar_experiencia(
             jugador,
             300
         )
 
-        accion = PantallaResultado(
-            "victoria"
-        ).ejecutar()
-
-        if accion == "salir":
-            return "salir"
-
-        # ====================================================
+        # ----------------------------------------------------
         # GUARDAR PROGRESO FINAL
-        # ====================================================
+        # ----------------------------------------------------
 
         if partida_id is not None:
 
@@ -906,9 +981,7 @@ def combatir_jefe_final(
                             jugador
                         )
                     ),
-                    siguiente_enemigo=(
-                        "Guardián Elemental"
-                    ),
+                    siguiente_enemigo="Guardián Elemental",
                     progreso=3,
                     inventario=(
                         obtener_inventario_para_guardar(
@@ -919,18 +992,41 @@ def combatir_jefe_final(
                     experiencia=jugador.experiencia
                 )
 
-            except ValueError:
-                pass
+                print(
+                    "Progreso final guardado."
+                )
 
-        print(
-            "¡Has completado "
-            "Arena Elemental!"
+            except ValueError as error:
+
+                print(
+                    f"No se pudo guardar "
+                    f"el progreso final: {error}"
+                )
+
+        # ----------------------------------------------------
+        # PANTALLA FINAL
+        # ----------------------------------------------------
+
+        accion_final = (
+            PantallaVictoriaFinal()
+            .ejecutar()
         )
+
+        if accion_final == "salir":
+            return "salir"
+
+        if accion_final == "menu":
+            return "menu"
+
+        if accion_final == "jugar":
+
+            return iniciar_nueva_partida(
+                repo
+            )
 
         return "menu"
 
     return "menu"
-
 
 # ============================================================
 # NUEVA PARTIDA

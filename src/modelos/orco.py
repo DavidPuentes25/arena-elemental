@@ -10,9 +10,9 @@ class Orco(Enemigo):
     def __init__(self):
         super().__init__(
             nombre="Orco",
-            vida=500,
-            ataque=16,
-            defensa=18
+            vida=260,
+            ataque=28,
+            defensa=13
         )
 
         # ==========================================

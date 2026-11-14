@@ -10,11 +10,13 @@ class PantallaProgreso:
     def __init__(
         self,
         estado,
+        jugador,
         partida_guardada=False
     ):
         pygame.init()
 
         self.estado = estado
+        self.jugador = jugador
 
         self.ancho = 1000
         self.alto = 700
@@ -29,15 +31,31 @@ class PantallaProgreso:
 
         self.reloj = pygame.time.Clock()
 
+        # =====================================================
+        # FUENTES
+        # =====================================================
+
         self.fuente_boton = pygame.font.SysFont(
             "georgia",
             16,
             bold=True
         )
 
-        # =================================================
-        # CONFIGURACIÓN DEL MAPA
-        # =================================================
+        self.fuente_nivel = pygame.font.SysFont(
+            "georgia",
+            18,
+            bold=True
+        )
+
+        self.fuente_xp = pygame.font.SysFont(
+            "arial",
+            13,
+            bold=True
+        )
+
+        # =====================================================
+        # MAPA SEGÚN PROGRESO
+        # =====================================================
 
         if estado == "inicio":
 
@@ -98,15 +116,14 @@ class PantallaProgreso:
                 f"Estado desconocido: {estado}"
             )
 
-        # =================================================
-        # CARGAR FONDO
-        # =================================================
+        # =====================================================
+        # FONDO
+        # =====================================================
 
         imagen_original = pygame.image.load(
             str(ruta)
         ).convert()
 
-        # Dejamos espacio inferior para controles.
         self.alto_mapa = 560
 
         self.fondo = pygame.transform.smoothscale(
@@ -117,9 +134,9 @@ class PantallaProgreso:
             )
         )
 
-        # =================================================
+        # =====================================================
         # FRANJA INFERIOR
-        # =================================================
+        # =====================================================
 
         self.rect_franja = pygame.Rect(
             0,
@@ -128,76 +145,77 @@ class PantallaProgreso:
             self.alto - self.alto_mapa
         )
 
-        # =================================================
+        # =====================================================
+        # PANEL NIVEL
+        # =====================================================
+
+        self.rect_nivel = pygame.Rect(
+            30,
+            570,
+            290,
+            50
+        )
+
+        # =====================================================
         # BOTONES PRINCIPALES
-        # =================================================
+        # =====================================================
 
         self.rect_inicio = pygame.Rect(
             35,
-            630,
+            635,
             270,
-            48
+            45
         )
 
         self.rect_guardar = pygame.Rect(
             365,
-            630,
+            635,
             270,
-            48
+            45
         )
 
         self.rect_continuar = pygame.Rect(
             695,
-            630,
+            635,
             270,
-            48
+            45
         )
 
-        # =================================================
-        # BOTONES PARA REPETIR COMBATES
-        # =================================================
+        # =====================================================
+        # REPETIR COMBATES
+        # =====================================================
 
         self.rect_repetir_goblin = None
         self.rect_repetir_orco = None
 
-        # Después del Goblin:
-        # se puede repetir Goblin.
         if estado == "goblin":
 
-            self.rect_repetir_goblin = (
-                pygame.Rect(
-                    365,
-                    575,
-                    270,
-                    42
-                )
+            self.rect_repetir_goblin = pygame.Rect(
+                365,
+                575,
+                270,
+                40
             )
 
-        # Después del Orco:
-        # se puede repetir Goblin u Orco.
         elif estado == "orco":
 
-            self.rect_repetir_goblin = (
-                pygame.Rect(
-                    200,
-                    575,
-                    270,
-                    42
-                )
+            self.rect_repetir_goblin = pygame.Rect(
+                365,
+                575,
+                200,
+                40
             )
 
-            self.rect_repetir_orco = (
-                pygame.Rect(
-                    530,
-                    575,
-                    270,
-                    42
-                )
+            self.rect_repetir_orco = pygame.Rect(
+                580,
+                575,
+                200,
+                40
             )
 
-    # =====================================================
-    # DIBUJAR BOTÓN
-    # =====================================================
+    # =========================================================
+    # BOTÓN
+    # =========================================================
 
     def dibujar_boton(
         self,
@@ -246,12 +264,10 @@ class PantallaProgreso:
             border_radius=10
         )
 
-        superficie = (
-            self.fuente_boton.render(
-                texto,
-                True,
-                (255, 245, 220)
-            )
+        superficie = self.fuente_boton.render(
+            texto,
+            True,
+            (255, 245, 220)
         )
 
         self.pantalla.blit(
@@ -261,13 +277,154 @@ class PantallaProgreso:
             )
         )
 
-    # =====================================================
+    # =========================================================
+    # NIVEL Y EXPERIENCIA
+    # =========================================================
+
+    def dibujar_nivel(self):
+
+        nivel = getattr(
+            self.jugador,
+            "nivel",
+            1
+        )
+
+        experiencia = getattr(
+            self.jugador,
+            "experiencia",
+            0
+        )
+
+        experiencia_necesaria = getattr(
+            self.jugador,
+            "experiencia_siguiente_nivel",
+            100
+        )
+
+        if experiencia_necesaria > 0:
+
+            porcentaje = (
+                experiencia
+                / experiencia_necesaria
+            )
+
+        else:
+
+            porcentaje = 0
+
+        porcentaje = max(
+            0,
+            min(
+                1,
+                porcentaje
+            )
+        )
+
+        # Panel
+        pygame.draw.rect(
+            self.pantalla,
+            (30, 25, 38),
+            self.rect_nivel,
+            border_radius=10
+        )
+
+        pygame.draw.rect(
+            self.pantalla,
+            (180, 145, 225),
+            self.rect_nivel,
+            2,
+            border_radius=10
+        )
+
+        # Nombre y nivel
+        texto_nivel = self.fuente_nivel.render(
+            (
+                f"{self.jugador.nombre}  "
+                f"·  NIVEL {nivel}"
+            ),
+            True,
+            (245, 230, 255)
+        )
+
+        self.pantalla.blit(
+            texto_nivel,
+            (
+                self.rect_nivel.x + 12,
+                self.rect_nivel.y + 6
+            )
+        )
+
+        # Barra XP
+        x = self.rect_nivel.x + 12
+        y = self.rect_nivel.y + 31
+
+        ancho = 180
+        alto = 9
+
+        pygame.draw.rect(
+            self.pantalla,
+            (55, 50, 65),
+            (
+                x,
+                y,
+                ancho,
+                alto
+            ),
+            border_radius=5
+        )
+
+        pygame.draw.rect(
+            self.pantalla,
+            (140, 95, 220),
+            (
+                x,
+                y,
+                int(
+                    ancho
+                    * porcentaje
+                ),
+                alto
+            ),
+            border_radius=5
+        )
+
+        pygame.draw.rect(
+            self.pantalla,
+            (220, 205, 250),
+            (
+                x,
+                y,
+                ancho,
+                alto
+            ),
+            1,
+            border_radius=5
+        )
+
+        # Texto XP
+        texto_xp = self.fuente_xp.render(
+            (
+                f"XP {experiencia}/"
+                f"{experiencia_necesaria}"
+            ),
+            True,
+            (235, 225, 255)
+        )
+
+        self.pantalla.blit(
+            texto_xp,
+            (
+                x + 190,
+                y - 4
+            )
+        )
+
+    # =========================================================
     # DIBUJAR
-    # =====================================================
+    # =========================================================
 
     def dibujar(self):
 
-        # Fondo base
         self.pantalla.fill(
             (12, 10, 18)
         )
@@ -278,14 +435,13 @@ class PantallaProgreso:
             (0, 0)
         )
 
-        # Franja inferior
+        # Franja
         pygame.draw.rect(
             self.pantalla,
             (18, 14, 22),
             self.rect_franja
         )
 
-        # Separador
         pygame.draw.line(
             self.pantalla,
             (190, 135, 55),
@@ -300,9 +456,15 @@ class PantallaProgreso:
             2
         )
 
-        # =================================================
-        # BOTONES PARA REPETIR
-        # =================================================
+        # =====================================================
+        # NIVEL
+        # =====================================================
+
+        self.dibujar_nivel()
+
+        # =====================================================
+        # REPETIR
+        # =====================================================
 
         if (
             self.rect_repetir_goblin
@@ -326,9 +488,9 @@ class PantallaProgreso:
                 secundario=True
             )
 
-        # =================================================
+        # =====================================================
         # BOTONES PRINCIPALES
-        # =================================================
+        # =====================================================
 
         self.dibujar_boton(
             self.rect_inicio,
@@ -347,9 +509,9 @@ class PantallaProgreso:
 
         pygame.display.flip()
 
-    # =====================================================
+    # =========================================================
     # EJECUTAR
-    # =====================================================
+    # =========================================================
 
     def ejecutar(self):
 
@@ -357,25 +519,13 @@ class PantallaProgreso:
 
             for evento in pygame.event.get():
 
-                # =========================================
-                # CERRAR VENTANA
-                # =========================================
-
                 if evento.type == pygame.QUIT:
                     return "salir"
-
-                # =========================================
-                # TECLADO
-                # =========================================
 
                 if evento.type == pygame.KEYDOWN:
 
                     if evento.key == pygame.K_ESCAPE:
                         return "menu"
-
-                # =========================================
-                # CLIC
-                # =========================================
 
                 if (
                     evento.type
@@ -383,49 +533,21 @@ class PantallaProgreso:
                     and evento.button == 1
                 ):
 
-                    # -------------------------------------
-                    # VOLVER AL INICIO
-                    # -------------------------------------
-
-                    if (
-                        self.rect_inicio
-                        .collidepoint(
-                            evento.pos
-                        )
+                    if self.rect_inicio.collidepoint(
+                        evento.pos
                     ):
-
                         return "menu"
 
-                    # -------------------------------------
-                    # GUARDAR
-                    # -------------------------------------
-
-                    if (
-                        self.rect_guardar
-                        .collidepoint(
-                            evento.pos
-                        )
+                    if self.rect_guardar.collidepoint(
+                        evento.pos
                     ):
-
                         return "guardar"
 
-                    # -------------------------------------
-                    # CONTINUAR HISTORIA
-                    # -------------------------------------
-
-                    if (
-                        self.rect_continuar
-                        .collidepoint(
-                            evento.pos
-                        )
+                    if self.rect_continuar.collidepoint(
+                        evento.pos
                     ):
-
                         return "continuar"
 
-                    # -------------------------------------
-                    # REPETIR GOBLIN
-                    # -------------------------------------
-
                     if (
                         self.rect_repetir_goblin
                         is not None
@@ -436,13 +558,7 @@ class PantallaProgreso:
                         )
                     ):
 
-                        return (
-                            "repetir_goblin"
-                        )
-
-                    # -------------------------------------
-                    # REPETIR ORCO
-                    # -------------------------------------
+                        return "repetir_goblin"
 
                     if (
                         self.rect_repetir_orco
@@ -454,9 +570,7 @@ class PantallaProgreso:
                         )
                     ):
 
-                        return (
-                            "repetir_orco"
-                        )
+                        return "repetir_orco"
 
             self.dibujar()
 
